@@ -35,6 +35,10 @@ type NavSection = {
   items: NavItem[];
 };
 
+interface SidebarProps {
+  user?: { name: string; email: string; role: string } | null;
+}
+
 const sections: NavSection[] = [
   {
     label: "Tasks",
@@ -64,7 +68,7 @@ const settingsItems: NavItem[] = [
   { href: "/setup", label: "Setup & Health", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ user = null }: SidebarProps = {}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [counts, setCounts] = useState<Record<TaskStatus, number>>({
@@ -253,24 +257,24 @@ export function Sidebar() {
         <div className="border-t border-nav-border p-3">
           <div className="flex items-center gap-2.5 px-2 py-2 rounded-md">
             <div className="w-7 h-7 rounded-full bg-white/10 border border-white/15 inline-flex items-center justify-center text-[11px] text-white font-semibold">
-              K
+              {(user?.name || user?.email || "?").charAt(0).toUpperCase()}
             </div>
             <div className="leading-tight min-w-0">
               <div className="text-white text-xs font-semibold truncate">
-                Karan Malhotra
+                {user?.name || "Not signed in"}
               </div>
               <div className="text-nav-active text-[10px] truncate">
-                System Admin
+                {user?.email || user?.role || ""}
               </div>
             </div>
           </div>
-          <button
+          <a
+            href="/api/auth/logout"
             className="mt-1 w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] text-nav-text hover:bg-white/5 hover:text-white transition-colors"
-            onClick={() => alert("Logout will be wired up later.")}
           >
             <LogOut className="w-4 h-4 text-nav-muted" strokeWidth={2} />
             <span>Sign out</span>
-          </button>
+          </a>
         </div>
       </aside>
     </>

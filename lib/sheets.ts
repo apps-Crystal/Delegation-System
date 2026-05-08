@@ -316,7 +316,11 @@ export async function appendDoers(doers: NewDoerInput[]): Promise<AddDoersResult
   });
 }
 
-export async function appendTask(input: NewTaskInput, userLookup: User): Promise<Task> {
+export async function appendTask(
+  input: NewTaskInput,
+  userLookup: User,
+  adminEmail = "",
+): Promise<Task> {
   const payload = {
     doerName: userLookup.name,
     doerPhone: userLookup.phone,
@@ -330,6 +334,7 @@ export async function appendTask(input: NewTaskInput, userLookup: User): Promise
     // For a brand-new task there has been no revision yet, so the
     // First Date column is also seeded with the user's planned date.
     createdAt: input.plannedDate,   // -> "First Date" col
+    adminEmail,
   };
   return await callAppsScript<Task>("addTask", payload);
 }

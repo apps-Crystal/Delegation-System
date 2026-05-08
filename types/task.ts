@@ -26,6 +26,8 @@ export interface Task {
   completedAt?: string;
   holdReason?: string;
   reviseNote?: string;
+  /** Email of the admin (logged-in user) who created the task. */
+  adminEmail?: string;
   /** Mandatory completion note captured when the task is marked Complete. */
   textValidation?: string;
   /** Drive URL(s) of optional photo proofs, joined by " | ". */

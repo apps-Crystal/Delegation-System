@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, RefreshCw, Bell, ChevronDown } from "lucide-react";
+import { Search, RefreshCw, ChevronDown, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TopBarProps {
   site?: string;
   online?: boolean;
+  user?: { name: string; email: string; role: string } | null;
 }
 
 /**
@@ -16,7 +17,7 @@ interface TopBarProps {
  * Search and notifications are visual-only for now; refresh just reloads
  * the current route. Wire-up can come later.
  */
-export function TopBar({ site = "Kolkata", online = true }: TopBarProps) {
+export function TopBar({ site = "Kolkata", online = true, user = null }: TopBarProps) {
   const [now, setNow] = useState<string>("");
   // Tiny clock just to make the chip feel alive — no extra requests
   useEffect(() => {
@@ -69,35 +70,54 @@ export function TopBar({ site = "Kolkata", online = true }: TopBarProps) {
           <RefreshCw className="w-4 h-4" />
         </button>
 
-        <button
-          title="Notifications"
-          className="relative w-9 h-9 inline-flex items-center justify-center rounded-md text-text-secondary hover:bg-bg-elevated transition-colors"
-        >
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1 right-1.5 min-w-[14px] h-[14px] text-[9px] font-semibold text-white bg-status-revise rounded-full inline-flex items-center justify-center px-1">
-            3
-          </span>
-        </button>
-
-        <UserChip />
+        <UserChip user={user} />
       </div>
     </header>
   );
 }
 
-function UserChip() {
+function UserChip({ user }: { user: TopBarProps["user"] }) {
+  const [open, setOpen] = useState(false);
+  const display = user?.name?.trim() || user?.email || "Guest";
+  const subtitle = user?.role || (user?.email ?? "Not signed in");
+  const initial = (display || "?").charAt(0).toUpperCase();
+
   return (
-    <div className="flex items-center gap-2 pl-2 pr-2 h-9 rounded-md hover:bg-bg-elevated transition-colors cursor-pointer">
-      <div className="w-7 h-7 rounded-full bg-accent text-white inline-flex items-center justify-center text-[11px] font-semibold">
-        K
-      </div>
-      <div className={cn("hidden md:flex flex-col leading-tight")}>
-        <span className="text-xs font-semibold text-text-primary">
-          Karan Malhotra
-        </span>
-        <span className="text-[10px] text-text-muted">System_Admin</span>
-      </div>
-      <ChevronDown className="hidden md:block w-3 h-3 text-text-muted" />
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        className="flex items-center gap-2 pl-2 pr-2 h-9 rounded-md hover:bg-bg-elevated transition-colors cursor-pointer"
+        title={user?.email || ""}
+      >
+        <div className="w-7 h-7 rounded-full bg-accent text-white inline-flex items-center justify-center text-[11px] font-semibold">
+          {initial}
+        </div>
+        <div className={cn("hidden md:flex flex-col leading-tight text-left")}>
+          <span className="text-xs font-semibold text-text-primary truncate max-w-[140px]">
+            {display}
+          </span>
+          <span className="text-[10px] text-text-muted truncate max-w-[140px]">
+            {subtitle}
+          </span>
+        </div>
+        <ChevronDown className="hidden md:block w-3 h-3 text-text-muted" />
+      </button>
+      {open && user && (
+        <div className="absolute right-0 mt-1 w-56 rounded-md border border-border-subtle bg-bg-surface shadow-card z-40 py-1">
+          <div className="px-3 py-2 border-b border-border-subtle">
+            <div className="text-xs font-semibold text-text-primary truncate">{user.name}</div>
+            <div className="text-[10px] text-text-muted truncate">{user.email}</div>
+          </div>
+          <a
+            href="/api/auth/logout"
+            className="flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-bg-elevated"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Sign out
+          </a>
+        </div>
+      )}
     </div>
   );
 }

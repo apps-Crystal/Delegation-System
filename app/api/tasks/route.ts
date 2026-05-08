@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readTasks, readUsers, appendTask } from "@/lib/sheets";
+import { getCurrentUser } from "@/lib/session";
 import type { TaskStatus, NewTaskInput } from "@/types/task";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +49,8 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json({ error: "Selected doer not found" }, { status: 400 });
     }
-    const created = await appendTask(body, user);
+    const admin = await getCurrentUser();
+    const created = await appendTask(body, user, admin?.email ?? "");
     return NextResponse.json(created);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
