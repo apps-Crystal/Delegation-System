@@ -1,0 +1,79 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  border-color: theme("colors.border.subtle");
+}
+
+html,
+body {
+  background-color: theme("colors.bg.base");
+  color: theme("colors.text.primary");
+  font-family: theme("fontFamily.sans");
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(240, 181, 61, 0.3);
+  color: theme("colors.text.primary");
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: theme("colors.border.DEFAULT");
+  border-radius: 9999px;
+  border: 2px solid theme("colors.bg.base");
+}
+::-webkit-scrollbar-thumb:hover {
+  background: theme("colors.border.strong");
+}
+
+/* Form element resets for light theme */
+input,
+textarea,
+select {
+  background-color: theme("colors.bg.surface");
+  color: theme("colors.text.primary");
+  border: 1px solid theme("colors.border.DEFAULT");
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: theme("colors.text.muted");
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: theme("colors.accent.DEFAULT");
+  box-shadow: 0 0 0 3px rgba(15, 39, 71, 0.12);
+}
+
+/* Date picker calendar in light mode */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
