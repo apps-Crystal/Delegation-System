@@ -51,6 +51,8 @@ export default function DashboardPage() {
     "follow-up": 0,
     "on-hold": 0,
     completed: 0,
+    cancelled: 0,
+    "week-shifted": 0,
   });
   const [recent, setRecent] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);

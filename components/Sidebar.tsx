@@ -76,6 +76,8 @@ export function Sidebar({ user = null }: SidebarProps = {}) {
     "follow-up": 0,
     "on-hold": 0,
     completed: 0,
+    cancelled: 0,
+    "week-shifted": 0,
   });
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(
     Object.fromEntries(sections.map((s) => [s.label, true]))
