@@ -6,10 +6,12 @@ const SESSION_COOKIE = "delegation_session";
 /**
  * Routes that don't require a session.
  *  - /sso receives the launch token from Crystal Core
+ *  - /api/auth/logout must work even when the session is already gone,
+ *    so users can always sign out without seeing a JSON 401.
  *  - /api/health is the diagnostics ping
  *  - Static assets and Next internals
  */
-const PUBLIC_PREFIXES = ["/sso", "/api/health", "/_next", "/favicon"];
+const PUBLIC_PREFIXES = ["/sso", "/api/auth/logout", "/api/health", "/_next", "/favicon"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p));
