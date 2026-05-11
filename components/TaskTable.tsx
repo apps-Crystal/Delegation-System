@@ -242,7 +242,7 @@ export function TaskTable({
               : activeModal.action === "revise"
               ? "Update the planned date for this task."
               : activeModal.action === "hold"
-              ? "Add a reason for putting this task on hold."
+              ? "Optionally add a reason for putting this task on hold."
               : "Cancelling will remove this task from active lists. This cannot be undone from the app."
           }
         >
@@ -372,13 +372,13 @@ export function TaskTable({
             {activeModal.action === "hold" && (
               <div>
                 <label className="block text-xs uppercase tracking-wider text-text-muted mb-1.5">
-                  Hold Reason
+                  Hold Reason <span className="text-text-muted">(optional)</span>
                 </label>
                 <textarea
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   rows={3}
-                  placeholder="Why is this task on hold?"
+                  placeholder="Why is this task on hold? (leave blank if not needed)"
                   className="w-full px-3 py-2.5 rounded-lg text-sm resize-none"
                 />
               </div>
@@ -411,7 +411,6 @@ export function TaskTable({
                 onClick={handleConfirm}
                 disabled={
                   submitting ||
-                  (activeModal.action === "hold" && !note.trim()) ||
                   (activeModal.action === "complete" && !completionText.trim()) ||
                   (activeModal.action === "revise" &&
                     (!date ||
