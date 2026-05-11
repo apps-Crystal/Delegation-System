@@ -56,6 +56,7 @@ const sections: NavSection[] = [
     icon: Users,
     items: [
       { href: "/add-doer", label: "Add Doer" },
+      { href: "/list-doer", label: "List Doer" },
     ],
   },
 ];
