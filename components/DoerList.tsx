@@ -1,9 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Mail, Phone, Users } from "lucide-react";
+import {
+  ChevronDown,
+  Mail,
+  Pencil,
+  Phone,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getUsers, getTasks } from "@/lib/api";
+import { getUsers, getTasks, updateDoer, deleteDoer } from "@/lib/api";
+import { Modal } from "@/components/Modal";
+import { Button } from "@/components/Button";
 import { StatusBadge } from "@/components/StatusBadge";
 import type { User } from "@/types/user";
 import type { Task, TaskStatus } from "@/types/task";
@@ -33,19 +42,24 @@ export function DoerList() {
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState<User | null>(null);
+
+  const load = async () => {
+    try {
+      setError(null);
+      const [u, t] = await Promise.all([getUsers(), getTasks()]);
+      setDoers(u);
+      setTasks(t);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load doers.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [u, t] = await Promise.all([getUsers(), getTasks()]);
-        setDoers(u);
-        setTasks(t);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load doers.");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    load();
   }, []);
 
   const enriched = useMemo<DoerWithTasks[]>(() => {
@@ -117,6 +131,25 @@ export function DoerList() {
         </div>
       )}
 
+      <EditDoerModal
+        doer={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          setEditing(null);
+          load();
+        }}
+      />
+
+      <DeleteDoerModal
+        doer={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={() => {
+          setDeleting(null);
+          setOpenId(null);
+          load();
+        }}
+      />
+
       <ul className="divide-y divide-border-subtle">
         {filtered.map((d) => {
           const open = openId === d.id;
@@ -157,6 +190,44 @@ export function DoerList() {
                   <CountChip label="Active" value={activeCount} accent />
                   <CountChip label="Done" value={d.counts.completed} />
                   <CountChip label="Total" value={d.tasks.length} />
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditing(d);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setEditing(d);
+                      }
+                    }}
+                    className="inline-flex items-center justify-center w-7 h-7 rounded-md text-text-muted hover:bg-bg-elevated hover:text-accent transition-colors"
+                    title="Edit doer"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleting(d);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDeleting(d);
+                      }
+                    }}
+                    className="inline-flex items-center justify-center w-7 h-7 rounded-md text-text-muted hover:bg-bg-elevated hover:text-status-revise transition-colors"
+                    title="Delete doer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </span>
                   <ChevronDown
                     className={cn(
                       "w-4 h-4 text-text-muted transition-transform",
@@ -245,5 +316,168 @@ function DoerTaskBreakdown({ tasks }: { tasks: Task[] }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+function EditDoerModal({
+  doer,
+  onClose,
+  onSaved,
+}: {
+  doer: User | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!doer) return;
+    setName(doer.name ?? "");
+    setPhone(doer.phone ?? "");
+    setEmail(doer.email ?? "");
+    setErr(null);
+    setSaving(false);
+  }, [doer]);
+
+  if (!doer) return null;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setErr("Name is required.");
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    try {
+      await updateDoer(doer.id, {
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+      });
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Update failed.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={saving ? () => {} : onClose}
+      title="Edit doer"
+      description="Changes are saved to the Doer List sheet immediately."
+    >
+      <form onSubmit={submit} className="space-y-3">
+        <div>
+          <label className="block text-xs uppercase tracking-wider text-text-muted mb-1.5">
+            Name <span className="text-status-revise">*</span>
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full h-10 px-3 rounded-md text-sm bg-bg-elevated border border-border focus:bg-bg-surface"
+            autoFocus
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs uppercase tracking-wider text-text-muted mb-1.5">
+            Phone <span className="text-text-muted">(optional)</span>
+          </label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full h-10 px-3 rounded-md text-sm bg-bg-elevated border border-border focus:bg-bg-surface"
+          />
+        </div>
+        <div>
+          <label className="block text-xs uppercase tracking-wider text-text-muted mb-1.5">
+            Email <span className="text-text-muted">(optional)</span>
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full h-10 px-3 rounded-md text-sm bg-bg-elevated border border-border focus:bg-bg-surface"
+          />
+        </div>
+        {err && <div className="text-xs text-status-revise">{err}</div>}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" disabled={saving}>
+            {saving ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function DeleteDoerModal({
+  doer,
+  onClose,
+  onDeleted,
+}: {
+  doer: User | null;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    setErr(null);
+    setDeleting(false);
+  }, [doer]);
+
+  if (!doer) return null;
+
+  const confirm = async () => {
+    setDeleting(true);
+    setErr(null);
+    try {
+      await deleteDoer(doer.id);
+      onDeleted();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Delete failed.");
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={deleting ? () => {} : onClose}
+      title="Delete doer?"
+      description="This removes the row from the Doer List sheet. Tasks already assigned to this person stay in Master and continue to show their name."
+    >
+      <div className="space-y-3">
+        <div className="rounded-md border border-border-subtle bg-bg-elevated p-3 text-[13px]">
+          <div className="text-text-primary font-medium">{doer.name}</div>
+          <div className="text-text-muted text-xs mt-1">
+            {doer.phone || "—"} · {doer.email || "no email"}
+          </div>
+        </div>
+        {err && <div className="text-xs text-status-revise">{err}</div>}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" onClick={onClose} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={confirm} disabled={deleting}>
+            {deleting ? "Deleting…" : "Delete doer"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }

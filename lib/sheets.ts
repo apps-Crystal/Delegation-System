@@ -316,6 +316,42 @@ export async function appendDoers(doers: NewDoerInput[]): Promise<AddDoersResult
   });
 }
 
+/**
+ * Resolve a doer id like "u-7" to its 1-indexed sheet row number.
+ * Throws if the id shape is wrong.
+ */
+function doerIdToRow(id: string): number {
+  const m = id.match(/^u-(\d+)$/);
+  if (!m) throw new Error(`Invalid doer id "${id}" — expected "u-<row>".`);
+  const row = parseInt(m[1], 10);
+  if (row < 2) throw new Error(`Invalid doer row ${row} — must be >= 2.`);
+  return row;
+}
+
+export interface DoerPatch {
+  name?: string;
+  phone?: string;
+  email?: string;
+}
+
+export async function updateDoerRow(
+  id: string,
+  patch: DoerPatch,
+): Promise<{ row: number; name: string; phone: string; email: string }> {
+  const row = doerIdToRow(id);
+  return await callAppsScript("updateDoer", {
+    row,
+    ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
+    ...(patch.phone !== undefined ? { phone: patch.phone.trim() } : {}),
+    ...(patch.email !== undefined ? { email: patch.email.trim() } : {}),
+  });
+}
+
+export async function deleteDoerRow(id: string): Promise<{ deleted: boolean; row: number }> {
+  const row = doerIdToRow(id);
+  return await callAppsScript("deleteDoer", { row });
+}
+
 export async function appendTask(
   input: NewTaskInput,
   userLookup: User,

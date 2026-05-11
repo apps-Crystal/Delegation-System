@@ -65,6 +65,10 @@ function doPost(e) {
       result = updateTask(payload);
     } else if (action === 'addDoers') {
       result = addDoers(payload);
+    } else if (action === 'updateDoer') {
+      result = updateDoer(payload);
+    } else if (action === 'deleteDoer') {
+      result = deleteDoer(payload);
     } else if (action === 'ping') {
       result = { ok: true, sheet: SpreadsheetApp.getActiveSpreadsheet().getName() };
     } else {
@@ -551,6 +555,109 @@ function addDoers(payload) {
     flushDoerCache();
     console.log('addDoers: added=' + added + ', skipped=' + skipped.length);
     return { added: added, skipped: skipped.length, skippedDetails: skipped };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------- Update / delete a doer (single row) ---------- */
+
+/**
+ * Resolve the Doer List sheet plus the name/phone/email column indexes.
+ * Shared by updateDoer and deleteDoer so we don't duplicate the column
+ * detection logic.
+ */
+function _resolveDoerSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(EMAIL_CONFIG.doerListSheet);
+  if (!sheet) {
+    const want = EMAIL_CONFIG.doerListSheet.toLowerCase();
+    const sheets = ss.getSheets();
+    for (let i = 0; i < sheets.length; i++) {
+      if (sheets[i].getName().toLowerCase() === want) { sheet = sheets[i]; break; }
+    }
+  }
+  if (!sheet) throw new Error('Doer List sheet "' + EMAIL_CONFIG.doerListSheet + '" not found');
+
+  const lastCol = Math.max(sheet.getLastColumn(), 1);
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const norm = headers.map(normalize);
+  let nameCol = -1, phoneCol = -1, emailCol = -1;
+  for (let i = 0; i < norm.length; i++) {
+    const h = norm[i];
+    if (nameCol === -1 && (h === 'name' || h === 'doername' || h === 'fullname')) nameCol = i;
+    if (phoneCol === -1 && (h === 'phonenumber' || h === 'phone' || h === 'mobile' ||
+        h === 'mobilenumber' || h === 'contact' || h === 'contactnumber' || h === 'number')) phoneCol = i;
+    if (emailCol === -1 && (h === 'email' || h === 'emailaddress' || h === 'mail' ||
+        h === 'emailid' || h === 'mailid')) emailCol = i;
+  }
+  if (nameCol === -1) {
+    throw new Error('Doer List has no Name column. Found headers: ' + headers.join(', '));
+  }
+  return { sheet: sheet, nameCol: nameCol, phoneCol: phoneCol, emailCol: emailCol };
+}
+
+/**
+ * Edit a single doer row in place.
+ * payload: { row: number, name?, phone?, email? }
+ * Only sets cells for fields that were passed and only for columns we
+ * detected — anything else in that row (e.g. a column-D ARRAYFORMULA)
+ * is left untouched.
+ */
+function updateDoer(payload) {
+  const row = parseInt(payload && payload.row, 10);
+  if (!row || row < 2) throw new Error('updateDoer: row must be >= 2');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const info = _resolveDoerSheet_();
+    if (row > info.sheet.getLastRow()) {
+      throw new Error('updateDoer: row ' + row + ' is past the end of the sheet');
+    }
+    if (payload.name !== undefined) {
+      info.sheet.getRange(row, info.nameCol + 1).setValue(String(payload.name).trim());
+    }
+    if (payload.phone !== undefined && info.phoneCol !== -1) {
+      info.sheet.getRange(row, info.phoneCol + 1).setValue(String(payload.phone).trim());
+    }
+    if (payload.email !== undefined && info.emailCol !== -1) {
+      info.sheet.getRange(row, info.emailCol + 1).setValue(String(payload.email).trim());
+    }
+    SpreadsheetApp.flush();
+    flushDoerCache();
+
+    const values = info.sheet.getRange(row, 1, 1, info.sheet.getLastColumn()).getValues()[0];
+    return {
+      row: row,
+      name: String(values[info.nameCol] || ''),
+      phone: info.phoneCol !== -1 ? String(values[info.phoneCol] || '') : '',
+      email: info.emailCol !== -1 ? String(values[info.emailCol] || '') : ''
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Remove a doer row entirely. Subsequent rows shift up.
+ * payload: { row: number }
+ */
+function deleteDoer(payload) {
+  const row = parseInt(payload && payload.row, 10);
+  if (!row || row < 2) throw new Error('deleteDoer: row must be >= 2');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const info = _resolveDoerSheet_();
+    if (row > info.sheet.getLastRow()) {
+      throw new Error('deleteDoer: row ' + row + ' is past the end of the sheet');
+    }
+    info.sheet.deleteRow(row);
+    SpreadsheetApp.flush();
+    flushDoerCache();
+    return { deleted: true, row: row };
   } finally {
     lock.releaseLock();
   }

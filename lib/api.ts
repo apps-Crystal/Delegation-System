@@ -58,6 +58,25 @@ export async function addDoers(doers: NewDoerInput[]): Promise<AddDoersResult> {
   });
 }
 
+export interface DoerPatch {
+  name?: string;
+  phone?: string;
+  email?: string;
+}
+
+export async function updateDoer(id: string, patch: DoerPatch): Promise<{ row: number; name: string; phone: string; email: string }> {
+  return jfetch(`/api/users/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function deleteDoer(id: string): Promise<{ deleted: boolean; row: number }> {
+  return jfetch(`/api/users/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 /* ---------- TASKS ---------- */
 
 export async function getTasks(status?: TaskStatus): Promise<Task[]> {
