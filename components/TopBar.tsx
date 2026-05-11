@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, RefreshCw, ChevronDown, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,10 @@ interface TopBarProps {
  */
 export function TopBar({ site = "Kolkata", online = true, user = null }: TopBarProps) {
   const [now, setNow] = useState<string>("");
+  const router = useRouter();
+  const params = useSearchParams();
+  const [q, setQ] = useState(params?.get("q") ?? "");
+
   // Tiny clock just to make the chip feel alive — no extra requests
   useEffect(() => {
     const t = setInterval(() => {
@@ -31,6 +36,18 @@ export function TopBar({ site = "Kolkata", online = true, user = null }: TopBarP
     }, 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Keep input in sync when navigating between pages
+  useEffect(() => {
+    setQ(params?.get("q") ?? "");
+  }, [params]);
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+  };
 
   return (
     <header className="sticky top-0 z-30 h-14 bg-bg-surface border-b border-border-subtle flex items-center px-4 lg:px-6 gap-3">
@@ -46,19 +63,21 @@ export function TopBar({ site = "Kolkata", online = true, user = null }: TopBarP
       </div>
 
       {/* Search */}
-      <div className="flex-1 max-w-xl mx-auto">
+      <form onSubmit={submitSearch} className="flex-1 max-w-xl mx-auto">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
           <input
             type="text"
-            placeholder="Search tasks, doers..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search tasks, doers... (press Enter)"
             className="w-full h-9 pl-9 pr-14 text-xs rounded-md bg-bg-elevated border border-border placeholder:text-text-muted focus:bg-bg-surface"
           />
           <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-text-muted bg-bg-surface border border-border-subtle rounded px-1.5 py-0.5">
-            Ctrl K
+            Enter
           </kbd>
         </div>
-      </div>
+      </form>
 
       {/* Right chips */}
       <div className="flex items-center gap-1.5">
