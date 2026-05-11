@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, UserPlus } from "lucide-react";
 import { Header } from "@/components/Header";
 import { DoerForm } from "@/components/DoerForm";
+import { DoerList } from "@/components/DoerList";
 import { addDoers, type NewDoerInput } from "@/lib/api";
 
 export default function AddDoerPage() {
@@ -87,6 +88,8 @@ export default function AddDoerPage() {
           </div>
         </aside>
       </div>
+
+      <DoerList />
     </div>
   );
 }
