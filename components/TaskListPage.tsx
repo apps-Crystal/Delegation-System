@@ -54,11 +54,7 @@ export function TaskListPage({
       if (dueToday) {
         const today = new Date().toISOString().slice(0, 10);
         next = all.filter(
-          (t) =>
-            t.status !== "completed" &&
-            t.status !== "cancelled" &&
-            t.status !== "week-shifted" &&
-            t.plannedDate === today
+          (t) => t.status === "pending" && t.plannedDate <= today,
         );
       }
       setTasks(next);

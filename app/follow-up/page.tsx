@@ -5,8 +5,8 @@ export default function FollowUpPage() {
     <TaskListPage
       dueToday
       title="Follow Up"
-      subtitle="Tasks that are due today across every doer."
-      emptyMessage="Nothing due today."
+      subtitle="Pending tasks planned for today or earlier."
+      emptyMessage="No pending tasks due today or overdue."
     />
   );
 }
