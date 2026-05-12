@@ -707,7 +707,13 @@ function isoWeek_(d) {
 
 /**
  * Upload a base64-encoded photo to the configured Drive folder, make it
- * anyone-with-link viewable, and return the public URL.
+ * anyone-with-link viewable, and return a DIRECT image URL.
+ *
+ * file.getUrl() returns "/file/d/<id>/view" which opens Drive's preview
+ * page. The /uc?id=<id> form streams the image bytes directly, so
+ * clicking the link in the sheet opens the actual photo (and tools that
+ * embed images from URLs can render it inline).
+ *
  * Throws if EMAIL_CONFIG.photoUploadFolderId is not set.
  */
 function uploadPhotoProof_(base64, filename, mime) {
@@ -721,7 +727,7 @@ function uploadPhotoProof_(base64, filename, mime) {
   const blob = Utilities.newBlob(Utilities.base64Decode(base64), mime, filename);
   const file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  return file.getUrl();
+  return 'https://drive.google.com/uc?id=' + file.getId();
 }
 
 /* ---------- Email ---------- */
