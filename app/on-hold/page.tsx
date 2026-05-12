@@ -7,7 +7,7 @@ export default function OnHoldPage() {
       title="On Hold"
       subtitle="Tasks that are paused or waiting on someone. Restore them when ready."
       emptyMessage="No tasks on hold."
-      allowedActions={["restore", "complete"]}
+      allowedActions={["restore", "complete", "edit"]}
     />
   );
 }
