@@ -13,6 +13,7 @@ import {
   Ban,
   MessageSquare,
   FileText,
+  Pencil,
 } from "lucide-react";
 import type { Task, TaskStatus } from "@/types/task";
 import { StatusBadge, PriorityBadge } from "./StatusBadge";
@@ -20,7 +21,7 @@ import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { cn, formatDate, formatRelative, isOverdue } from "@/lib/utils";
 
-type Action = "complete" | "revise" | "hold" | "restore" | "cancel";
+type Action = "complete" | "revise" | "hold" | "restore" | "cancel" | "edit";
 
 type ActionPayload = {
   note?: string;
@@ -29,6 +30,8 @@ type ActionPayload = {
   photoBase64?: string;
   photoFilename?: string;
   photoMime?: string;
+  /** Used by the "edit" action — the new task description. */
+  description?: string;
 };
 
 /** Maximum size we allow before rejecting (server still has to receive it). */
@@ -95,6 +98,8 @@ export function TaskTable({
   const [completionText, setCompletionText] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // Edit-only state — new description text the user types in the modal.
+  const [editText, setEditText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const closeModal = () => {
@@ -104,6 +109,7 @@ export function TaskTable({
     setCompletionText("");
     setPhotoFile(null);
     setPhotoError(null);
+    setEditText("");
   };
 
   const handleConfirm = async () => {
@@ -119,6 +125,8 @@ export function TaskTable({
           payload.photoMime = mime;
           payload.photoFilename = filename;
         }
+      } else if (activeModal.action === "edit") {
+        payload.description = editText.trim();
       }
       await onAction(activeModal.task.id, activeModal.action, payload);
       closeModal();
@@ -189,6 +197,9 @@ export function TaskTable({
                       } else {
                         setDate(task.plannedDate);
                       }
+                      if (action === "edit") {
+                        setEditText(task.description ?? "");
+                      }
                     }
                   }}
                 />
@@ -216,6 +227,9 @@ export function TaskTable({
                     ? getReviseMinDate(task.plannedDate)
                     : task.plannedDate
                 );
+                if (action === "edit") {
+                  setEditText(task.description ?? "");
+                }
               }
             }}
           />
@@ -236,6 +250,8 @@ export function TaskTable({
               ? "Put Task On Hold"
               : activeModal.action === "cancel"
               ? "Cancel Task"
+              : activeModal.action === "edit"
+              ? "Edit Task"
               : ""
           }
           description={
@@ -245,6 +261,8 @@ export function TaskTable({
               ? "Update the planned date for this task."
               : activeModal.action === "hold"
               ? "Optionally add a reason for putting this task on hold."
+              : activeModal.action === "edit"
+              ? "Update the task description. Saved to the sheet immediately."
               : "Cancelling will remove this task from active lists. This cannot be undone from the app."
           }
         >
@@ -386,6 +404,25 @@ export function TaskTable({
               </div>
             )}
 
+            {activeModal.action === "edit" && (
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-text-muted mb-1.5">
+                  Task Description <span className="text-status-revise">*</span>
+                </label>
+                <textarea
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  rows={4}
+                  placeholder="What needs to be done?"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm resize-none leading-relaxed"
+                  autoFocus
+                />
+                <p className="mt-1 text-[11px] text-text-muted">
+                  Writes back to the &quot;Task&quot; column in the Master sheet.
+                </p>
+              </div>
+            )}
+
             {activeModal.action === "cancel" && (
               <div className="rounded-md border border-status-revise/30 bg-status-revise/5 p-3 text-[13px] text-status-revise flex items-start gap-2">
                 <Ban className="w-4 h-4 mt-0.5 shrink-0" />
@@ -414,6 +451,9 @@ export function TaskTable({
                 disabled={
                   submitting ||
                   (activeModal.action === "complete" && !completionText.trim()) ||
+                  (activeModal.action === "edit" &&
+                    (!editText.trim() ||
+                      editText.trim() === (activeModal.task.description ?? "").trim())) ||
                   (activeModal.action === "revise" &&
                     (!date ||
                       (!!activeModal.task.plannedDate &&
@@ -428,6 +468,8 @@ export function TaskTable({
                   ? "Mark Complete"
                   : activeModal.action === "cancel"
                   ? "Yes, Cancel Task"
+                  : activeModal.action === "edit"
+                  ? "Save Changes"
                   : "Confirm"}
               </Button>
             </div>
@@ -623,14 +665,16 @@ function RowActions({
   allowedActions?: Action[];
   onAction: (a: Action) => void;
 }) {
-  // Smart defaults if not given
+  // Smart defaults if not given. "edit" is appended last on every status so
+  // it shows up as the rightmost action on every list page — Pending,
+  // Follow Up, On Hold, Completed, Cancelled and Week Shifted alike.
   const defaults: Record<TaskStatus, Action[]> = {
-    pending: ["complete", "revise", "hold", "cancel"],
-    "follow-up": ["complete", "revise", "hold", "cancel"],
-    "on-hold": ["restore", "complete", "cancel"],
-    completed: [],
-    cancelled: [],
-    "week-shifted": [],
+    pending: ["complete", "revise", "hold", "cancel", "edit"],
+    "follow-up": ["complete", "revise", "hold", "cancel", "edit"],
+    "on-hold": ["restore", "complete", "cancel", "edit"],
+    completed: ["edit"],
+    cancelled: ["edit"],
+    "week-shifted": ["edit"],
   };
   const actions = allowedActions ?? defaults[task.status];
 
@@ -691,6 +735,16 @@ function RowActions({
           title="Cancel task"
         >
           <Ban className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {actions.includes("edit") && (
+        <button
+          onClick={() => onAction("edit")}
+          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-xs font-medium bg-bg-elevated text-text-secondary border border-border hover:bg-bg-hover hover:text-accent transition-colors"
+          title="Edit task description"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+          Edit
         </button>
       )}
     </div>

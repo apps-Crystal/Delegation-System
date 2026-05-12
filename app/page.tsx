@@ -6,7 +6,7 @@ import { ArrowUpRight, Clock, ListChecks, PauseCircle, CheckCircle2, PlusCircle,
 import { Header } from "@/components/Header";
 import { TaskTable } from "@/components/TaskTable";
 import { Button } from "@/components/Button";
-import { getTasks, getTaskCounts, markTaskComplete, holdTask, reviseTask, restoreTask, cancelTask, type CountKey } from "@/lib/api";
+import { getTasks, getTaskCounts, markTaskComplete, holdTask, reviseTask, restoreTask, cancelTask, editTaskDescription, type CountKey } from "@/lib/api";
 import type { Task, TaskStatus } from "@/types/task";
 import { cn } from "@/lib/utils";
 
@@ -80,7 +80,7 @@ export default function DashboardPage() {
 
   const handleAction = async (
     id: string,
-    action: "complete" | "revise" | "hold" | "restore" | "cancel",
+    action: "complete" | "revise" | "hold" | "restore" | "cancel" | "edit",
     payload?: {
       note?: string;
       date?: string;
@@ -88,6 +88,7 @@ export default function DashboardPage() {
       photoBase64?: string;
       photoFilename?: string;
       photoMime?: string;
+      description?: string;
     }
   ) => {
     try {
@@ -106,6 +107,10 @@ export default function DashboardPage() {
         await restoreTask(id);
       } else if (action === "cancel") {
         await cancelTask(id);
+      } else if (action === "edit") {
+        const next = (payload?.description ?? "").trim();
+        if (!next) return;
+        await editTaskDescription(id, next);
       }
       await refresh();
     } catch (e) {

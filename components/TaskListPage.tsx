@@ -15,6 +15,7 @@ import {
   holdTask,
   restoreTask,
   cancelTask,
+  editTaskDescription,
 } from "@/lib/api";
 import type { Task, TaskStatus, TaskPriority } from "@/types/task";
 
@@ -106,7 +107,7 @@ export function TaskListPage({
 
   const handleAction = async (
     id: string,
-    action: "complete" | "revise" | "hold" | "restore" | "cancel",
+    action: "complete" | "revise" | "hold" | "restore" | "cancel" | "edit",
     payload?: {
       note?: string;
       date?: string;
@@ -114,6 +115,7 @@ export function TaskListPage({
       photoBase64?: string;
       photoFilename?: string;
       photoMime?: string;
+      description?: string;
     }
   ) => {
     try {
@@ -132,6 +134,10 @@ export function TaskListPage({
         await restoreTask(id);
       } else if (action === "cancel") {
         await cancelTask(id);
+      } else if (action === "edit") {
+        const next = (payload?.description ?? "").trim();
+        if (!next) return;
+        await editTaskDescription(id, next);
       }
       await refresh();
     } catch (e) {

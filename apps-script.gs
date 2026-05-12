@@ -337,6 +337,12 @@ function updateTask(payload) {
   // button next to the status badge to view whichever note is current.
   if (payload.holdReason !== undefined) setCellIfMapped(sheet, row, map.textValidation, payload.holdReason);
   if (payload.reviseNote !== undefined) setCellIfMapped(sheet, row, map.reviseNote, payload.reviseNote);
+  // Description (task name) edit — let the user rename a task in place from
+  // any list page. We only write if a non-empty string was provided so a
+  // stray undefined doesn't wipe the cell.
+  if (typeof payload.description === 'string' && payload.description.trim() !== '') {
+    setCellIfMapped(sheet, row, map.description, payload.description);
+  }
   if (payload.plannedDate !== undefined) setCellIfMapped(sheet, row, map.plannedDate, payload.plannedDate);
   if (payload.completedAt !== undefined) setCellIfMapped(sheet, row, map.completedAt, payload.completedAt);
 

@@ -381,6 +381,7 @@ export async function patchTask(rowOrId: string, update: TaskUpdate): Promise<Ta
     rowOrId,
   };
   if (update.status) payload.status = STATUS_TO_SHEET[update.status];
+  if (update.description !== undefined) payload.description = update.description;
   if (update.holdReason !== undefined) payload.holdReason = update.holdReason ?? "";
   if (update.reviseNote !== undefined) payload.reviseNote = update.reviseNote ?? "";
   if (update.plannedDate !== undefined) payload.plannedDate = update.plannedDate;

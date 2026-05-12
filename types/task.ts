@@ -43,6 +43,8 @@ export interface NewTaskInput {
 
 export interface TaskUpdate {
   status?: TaskStatus;
+  /** Edit the task description in place. Empty/whitespace-only is ignored server-side. */
+  description?: string;
   holdReason?: string;
   reviseNote?: string;
   plannedDate?: string;

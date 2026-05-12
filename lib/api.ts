@@ -167,6 +167,10 @@ export async function cancelTask(id: string): Promise<Task> {
   return updateTask(id, { status: "cancelled" });
 }
 
+export async function editTaskDescription(id: string, description: string): Promise<Task> {
+  return updateTask(id, { description });
+}
+
 /* ---------- AGGREGATES ---------- */
 
 export type CountKey = TaskStatus | "overdue";
