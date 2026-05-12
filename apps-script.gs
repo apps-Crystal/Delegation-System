@@ -144,7 +144,11 @@ const HEADER_ALIASES = {
   // or a cross-week move triggers a Week-Shift.
   revision1: ['revision1', 'rev1', 'firstrevision', 'revisiona'],
   revision2: ['revision2', 'rev2', 'secondrevision', 'revisionb'],
-  totalRevisions: ['totalrevisions', 'revisions', 'revisioncount', 'noofrevisions', 'numrevisions', 'revcount']
+  totalRevisions: ['totalrevisions', 'revisions', 'revisioncount', 'noofrevisions', 'numrevisions', 'revcount'],
+  // Recurrence cadence in days. When this row is marked Completed and the
+  // value is > 0, a new task row (same doer + description) is auto-appended
+  // with plannedDate = today + N days.
+  recurrenceDays: ['recurrencedays', 'recurrence', 'recurringdays', 'recurdays', 'recurring', 'recurevery', 'repeatevery', 'repeatdays']
 };
 
 function getColumnMap(sheet) {
@@ -219,7 +223,13 @@ function rowToTask(sheet, map, row) {
     holdReason: String(get('holdReason') || ''),
     reviseNote: String(get('reviseNote') || ''),
     textValidation: String(get('textValidation') || ''),
-    photoValidation: String(get('photoValidation') || '')
+    photoValidation: String(get('photoValidation') || ''),
+    recurrenceDays: (function () {
+      const raw = String(get('recurrenceDays') || '').trim();
+      if (!raw) return 0;
+      const n = parseInt(raw, 10);
+      return (isFinite(n) && n > 0) ? n : 0;
+    })()
   };
 }
 
@@ -247,6 +257,14 @@ function addTask(payload) {
     setRowCell(row, map.priority, payload.priority || 'Medium');
     setRowCell(row, map.status, payload.status || 'Pending');
     setRowCell(row, map.createdAt, payload.createdAt || new Date().toISOString().slice(0, 10));
+    // Optional recurrence cadence (whole days). Only write if present and >0;
+    // a missing/zero value means "no recurrence".
+    if (payload.recurrenceDays !== undefined && payload.recurrenceDays !== null) {
+      const recN = parseInt(payload.recurrenceDays, 10);
+      if (isFinite(recN) && recN > 0) {
+        setRowCell(row, map.recurrenceDays, recN);
+      }
+    }
 
     sheet.appendRow(row);
     // Force the write to propagate before we release the lock so the next
@@ -373,7 +391,109 @@ function updateTask(payload) {
     }
   }
 
+  // Recurrence: if this update transitioned the row to Completed AND the
+  // row has a recurrence cadence, auto-create the next instance.
+  // Failures here must NOT fail the completion — log and move on.
+  if (typeof payload.status === 'string' && normalize(payload.status) === 'completed') {
+    try {
+      cloneIfRecurring_(sheet, map, row);
+    } catch (recErr) {
+      console.error('cloneIfRecurring_ failed for row ' + row + ': ' +
+        (recErr && recErr.toString ? recErr.toString() : recErr));
+    }
+  }
+
   return rowToTask(sheet, map, row);
+}
+
+/**
+ * If the just-completed row has a recurrenceDays cell > 0, append a brand-new
+ * task carrying the same doer + description + priority + recurrenceDays, with:
+ *   - new DT-N id
+ *   - status: Pending
+ *   - First Date / Latest Revision = today + N days
+ *   - Total Revisions reset to 0
+ * Also fires the regular new-task email (best effort) so the doer is notified
+ * just like a manually-created task.
+ */
+function cloneIfRecurring_(sheet, map, sourceRow) {
+  if (map.recurrenceDays === -1) return; // sheet doesn't have the column — silently skip
+  const lastCol = map.__lastCol__;
+  const cur = sheet.getRange(sourceRow, 1, 1, lastCol).getValues()[0];
+  const get = function (key) { return map[key] === -1 ? '' : cur[map[key]]; };
+
+  const rawN = String(get('recurrenceDays') || '').trim();
+  const n = parseInt(rawN, 10);
+  if (!isFinite(n) || n <= 0) return;
+
+  const nextDate = new Date();
+  nextDate.setHours(0, 0, 0, 0);
+  nextDate.setDate(nextDate.getDate() + n);
+  const nextDateStr = Utilities.formatDate(nextDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+
+  const newId = nextTaskId(sheet, map);
+  const newRowArr = new Array(lastCol).fill('');
+  setRowCell(newRowArr, map.id, newId);
+  setRowCell(newRowArr, map.doerName, get('doerName') || '');
+  setRowCell(newRowArr, map.doerPhone, get('doerPhone') || '');
+  setRowCell(newRowArr, map.description, get('description') || '');
+  setRowCell(newRowArr, map.createdAt, nextDateStr);
+  setRowCell(newRowArr, map.plannedDate, nextDateStr);
+  setRowCell(newRowArr, map.priority, get('priority') || 'Medium');
+  setRowCell(newRowArr, map.status, 'Pending');
+  setRowCell(newRowArr, map.totalRevisions, 0);
+  // Carry the cadence forward so the chain self-perpetuates.
+  setRowCell(newRowArr, map.recurrenceDays, n);
+
+  sheet.appendRow(newRowArr);
+  SpreadsheetApp.flush();
+  const newRowNum = sheet.getLastRow();
+  console.log('Recurrence: row ' + sourceRow + ' completed -> created row ' +
+    newRowNum + ' (id ' + newId + ', due ' + nextDateStr + ')');
+
+  // Fire the standard new-task email — find the doer's email from the Doer
+  // List sheet (lookup by name).
+  let doerEmail = '';
+  try {
+    doerEmail = lookupDoerEmailByName_(String(get('doerName') || ''));
+  } catch (_) { /* ignore lookup failures */ }
+
+  let emailStatus = 'skipped';
+  try {
+    const ok = sendNewTaskEmail({
+      doerName: String(get('doerName') || ''),
+      doerEmail: doerEmail,
+      taskId: newId,
+      description: String(get('description') || ''),
+      plannedDate: nextDateStr
+    });
+    emailStatus = ok ? 'sent' : 'failed';
+  } catch (mailErr) {
+    emailStatus = 'failed';
+    console.error('Recurrence email failed (clone still created): ' +
+      (mailErr && mailErr.toString ? mailErr.toString() : mailErr));
+  }
+  setCellIfMapped(sheet, newRowNum, map.emailSent, emailStatus);
+}
+
+/**
+ * Cheap name → email lookup over the Doer List. Returns '' when not found.
+ * Match is case-insensitive on a trimmed name.
+ */
+function lookupDoerEmailByName_(name) {
+  if (!name) return '';
+  const target = String(name).toLowerCase().trim();
+  if (!target) return '';
+  const info = _resolveDoerSheet_();
+  if (info.emailCol === -1) return '';
+  const lastRow = info.sheet.getLastRow();
+  if (lastRow < 2) return '';
+  const rows = info.sheet.getRange(2, 1, lastRow - 1, info.sheet.getLastColumn()).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    const n = String(rows[i][info.nameCol] || '').toLowerCase().trim();
+    if (n === target) return String(rows[i][info.emailCol] || '').trim();
+  }
+  return '';
 }
 
 /**

@@ -14,6 +14,7 @@ import {
   MessageSquare,
   FileText,
   Pencil,
+  Repeat,
 } from "lucide-react";
 import type { Task, TaskStatus } from "@/types/task";
 import { StatusBadge, PriorityBadge } from "./StatusBadge";
@@ -531,6 +532,9 @@ function TaskRow({
         <div className="flex items-center gap-2 mt-1.5">
           <PriorityBadge priority={task.priority} />
           <span className="text-text-muted text-[11px] font-mono">{task.id}</span>
+          {task.recurrenceDays && task.recurrenceDays > 0 && (
+            <RecurrenceBadge days={task.recurrenceDays} />
+          )}
           {task.holdReason && (
             <span className="text-status-hold text-[11px] truncate max-w-[200px]">
               · {task.holdReason}
@@ -635,6 +639,9 @@ function TaskCard({
           {overdue ? "Overdue · " : ""}
           {formatDate(task.plannedDate)}
         </span>
+        {task.recurrenceDays && task.recurrenceDays > 0 && (
+          <RecurrenceBadge days={task.recurrenceDays} />
+        )}
       </div>
       {task.holdReason && (
         <div className="mt-2 text-xs text-status-hold">
@@ -748,6 +755,20 @@ function RowActions({
         </button>
       )}
     </div>
+  );
+}
+
+/* ---------- Recurrence badge ---------- */
+
+function RecurrenceBadge({ days }: { days: number }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded border border-accent/30 bg-accent/10 text-accent"
+      title={`Auto-creates a new task ${days} day${days === 1 ? "" : "s"} after this is marked Complete`}
+    >
+      <Repeat className="w-3 h-3" strokeWidth={2.25} />
+      Every {days}d
+    </span>
   );
 }
 

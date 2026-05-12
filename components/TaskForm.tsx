@@ -11,6 +11,7 @@ import {
   Loader2,
   Plus,
   X,
+  Repeat,
 } from "lucide-react";
 import type { User } from "@/types/user";
 import type { TaskPriority, NewTaskInput } from "@/types/task";
@@ -36,6 +37,8 @@ type TaskRow = {
   description: string;
   plannedDate: string;
   priority: TaskPriority;
+  recurring: boolean;
+  recurrenceDays: number;
 };
 
 let _rowCounter = 0;
@@ -44,6 +47,8 @@ const newRow = (date: string): TaskRow => ({
   description: "",
   plannedDate: date,
   priority: "medium",
+  recurring: false,
+  recurrenceDays: 7,
 });
 
 export function TaskForm({ users, onSubmit, loading }: TaskFormProps) {
@@ -87,11 +92,20 @@ export function TaskForm({ users, onSubmit, loading }: TaskFormProps) {
       if (!r.plannedDate) {
         return setError(`Task #${i + 1}: planned date is required.`);
       }
+      if (r.recurring) {
+        const n = Math.floor(r.recurrenceDays);
+        if (!Number.isFinite(n) || n < 1) {
+          return setError(
+            `Task #${i + 1}: recurrence days must be a whole number 1 or greater.`,
+          );
+        }
+      }
       cleaned.push({
         doerId,
         description: r.description.trim(),
         plannedDate: r.plannedDate,
         priority: r.priority,
+        recurrenceDays: r.recurring ? Math.floor(r.recurrenceDays) : undefined,
       });
     }
 
@@ -366,6 +380,39 @@ function RowEditor({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Recurrence toggle */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-2.5 text-[12px]">
+        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={row.recurring}
+            onChange={(e) => onChange({ recurring: e.target.checked })}
+            className="h-3.5 w-3.5 accent-accent"
+          />
+          <Repeat className="w-3.5 h-3.5 text-text-muted" strokeWidth={2} />
+          <span className="text-text-secondary font-medium">Repeat after completion</span>
+        </label>
+        {row.recurring && (
+          <div className="inline-flex items-center gap-1.5">
+            <span className="text-text-muted">every</span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={row.recurrenceDays}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                onChange({ recurrenceDays: Number.isFinite(n) ? n : 0 });
+              }}
+              className="w-16 h-7 px-2 rounded-md text-[12px] border border-border bg-bg-surface text-center"
+            />
+            <span className="text-text-muted">
+              day{row.recurrenceDays === 1 ? "" : "s"} after this is marked complete
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

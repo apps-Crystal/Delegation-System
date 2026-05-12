@@ -32,6 +32,12 @@ export interface Task {
   textValidation?: string;
   /** Drive URL(s) of optional photo proofs, joined by " | ". */
   photoValidation?: string;
+  /**
+   * If > 0, a new task (with the same doer + description) is auto-created
+   * `recurrenceDays` days after this one is marked Complete. 0 / undefined
+   * means no recurrence.
+   */
+  recurrenceDays?: number;
 }
 
 export interface NewTaskInput {
@@ -39,6 +45,8 @@ export interface NewTaskInput {
   description: string;
   plannedDate: string;
   priority: TaskPriority;
+  /** Optional recurrence cadence in days (0 = none). */
+  recurrenceDays?: number;
 }
 
 export interface TaskUpdate {

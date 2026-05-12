@@ -187,6 +187,7 @@ export async function readTasks(): Promise<Task[]> {
     "reviseNote",
     "textValidation",
     "photoValidation",
+    "recurrenceDays",
   ];
   for (const k of order) {
     const idx = findColumn(headers, MASTER_ALIASES[k], claimed);
@@ -259,6 +260,15 @@ export async function readTasks(): Promise<Task[]> {
         cols.textValidation !== -1 ? (r[cols.textValidation] ?? "").toString().trim() || undefined : undefined,
       photoValidation:
         cols.photoValidation !== -1 ? (r[cols.photoValidation] ?? "").toString().trim() || undefined : undefined,
+      recurrenceDays:
+        cols.recurrenceDays !== -1
+          ? (() => {
+              const raw = (r[cols.recurrenceDays] ?? "").toString().trim();
+              if (!raw) return undefined;
+              const n = parseInt(raw, 10);
+              return Number.isFinite(n) && n > 0 ? n : undefined;
+            })()
+          : undefined,
     });
   }
 
@@ -380,7 +390,7 @@ export async function appendTask(
   userLookup: User,
   adminEmail = "",
 ): Promise<Task> {
-  const payload = {
+  const payload: Record<string, unknown> = {
     doerName: userLookup.name,
     doerPhone: userLookup.phone,
     // Apps Script uses doerEmail to send the new-task notification email.
@@ -395,6 +405,9 @@ export async function appendTask(
     createdAt: input.plannedDate,   // -> "First Date" col
     adminEmail,
   };
+  if (typeof input.recurrenceDays === "number" && input.recurrenceDays > 0) {
+    payload.recurrenceDays = input.recurrenceDays;
+  }
   return await callAppsScript<Task>("addTask", payload);
 }
 

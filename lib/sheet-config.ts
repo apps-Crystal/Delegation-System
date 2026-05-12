@@ -25,7 +25,8 @@ export type FieldKey =
   | "photoValidation"
   | "revision1"
   | "revision2"
-  | "totalRevisions";
+  | "totalRevisions"
+  | "recurrenceDays";
 
 /**
  * Aliases for master sheet columns. Match is case+whitespace insensitive.
@@ -56,6 +57,19 @@ export const MASTER_ALIASES: Record<FieldKey, string[]> = {
   revision1: ["revision 1", "revision1", "rev 1", "rev1", "first revision", "revision a"],
   revision2: ["revision 2", "revision2", "rev 2", "rev2", "second revision", "revision b"],
   totalRevisions: ["total revisions", "totalrevisions", "revisions", "revision count", "no of revisions", "num revisions", "rev count"],
+  // Optional recurrence column on the master sheet. When >0, completing the
+  // row auto-creates a fresh task N days later (same doer + description).
+  recurrenceDays: [
+    "recurrence days",
+    "recurrencedays",
+    "recurrence",
+    "recurring days",
+    "recur days",
+    "recurring",
+    "recur every",
+    "repeat every",
+    "repeat days",
+  ],
 };
 
 /**
