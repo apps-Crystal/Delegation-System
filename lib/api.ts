@@ -62,9 +62,21 @@ export interface DoerPatch {
   name?: string;
   phone?: string;
   email?: string;
+  lastWeekCommitment?: string;
+  thisWeekCommitment?: string;
 }
 
-export async function updateDoer(id: string, patch: DoerPatch): Promise<{ row: number; name: string; phone: string; email: string }> {
+export async function updateDoer(
+  id: string,
+  patch: DoerPatch,
+): Promise<{
+  row: number;
+  name: string;
+  phone: string;
+  email: string;
+  lastWeekCommitment?: string;
+  thisWeekCommitment?: string;
+}> {
   return jfetch(`/api/users/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify(patch),

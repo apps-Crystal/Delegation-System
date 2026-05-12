@@ -8,4 +8,6 @@ export interface User {
   email?: string;
   department?: string;
   role?: string;
+  lastWeekCommitment?: string;
+  thisWeekCommitment?: string;
 }

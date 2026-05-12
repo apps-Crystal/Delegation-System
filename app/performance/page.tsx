@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { TaskTable } from "@/components/TaskTable";
-import { getUsers, getTasks } from "@/lib/api";
+import { getUsers, getTasks, updateDoer } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { User } from "@/types/user";
 import type { Task } from "@/types/task";
@@ -59,10 +59,15 @@ export default function PerformancePage() {
   const [toDate, setToDate] = useState(TODAY());
   const [tab, setTab] = useState<TabKey>("pending");
 
-  // Commitment inputs are persisted in localStorage per doer so the user can
-  // come back to the page and still see what they wrote.
+  // Commitments live on the Doer List sheet (Last/This Week Commitment columns).
+  // Local state is the in-flight value; we persist on blur to avoid one Apps
+  // Script write per keystroke.
   const [lastWeekCommitment, setLastWeekCommitment] = useState("");
   const [thisWeekCommitment, setThisWeekCommitment] = useState("");
+  const [savedLast, setSavedLast] = useState("");
+  const [savedThis, setSavedThis] = useState("");
+  const [savingWhich, setSavingWhich] = useState<"last" | "this" | null>(null);
+  const [commitError, setCommitError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -78,20 +83,57 @@ export default function PerformancePage() {
     })();
   }, []);
 
+  // Whenever a different doer is selected, seed the commitment inputs from
+  // that doer's sheet row.
   useEffect(() => {
-    if (!doerId) {
-      setLastWeekCommitment("");
-      setThisWeekCommitment("");
-      return;
-    }
-    if (typeof window === "undefined") return;
-    setLastWeekCommitment(localStorage.getItem(`commit:last:${doerId}`) ?? "");
-    setThisWeekCommitment(localStorage.getItem(`commit:this:${doerId}`) ?? "");
-  }, [doerId]);
+    const u = users.find((x) => x.id === doerId);
+    const lw = u?.lastWeekCommitment ?? "";
+    const tw = u?.thisWeekCommitment ?? "";
+    setLastWeekCommitment(lw);
+    setThisWeekCommitment(tw);
+    setSavedLast(lw);
+    setSavedThis(tw);
+    setCommitError(null);
+  }, [doerId, users]);
 
-  const saveCommitment = (which: "last" | "this", value: string) => {
-    if (!doerId || typeof window === "undefined") return;
-    localStorage.setItem(`commit:${which}:${doerId}`, value);
+  const commitOnBlur = async (which: "last" | "this") => {
+    if (!doerId) return;
+    const value = which === "last" ? lastWeekCommitment : thisWeekCommitment;
+    const saved = which === "last" ? savedLast : savedThis;
+    if (value === saved) return; // nothing changed
+    setSavingWhich(which);
+    setCommitError(null);
+    try {
+      const res = await updateDoer(doerId, {
+        [which === "last" ? "lastWeekCommitment" : "thisWeekCommitment"]: value,
+      });
+      // Reflect what the sheet returned (it's the source of truth).
+      const fresh = which === "last" ? res.lastWeekCommitment ?? value : res.thisWeekCommitment ?? value;
+      if (which === "last") {
+        setLastWeekCommitment(fresh);
+        setSavedLast(fresh);
+      } else {
+        setThisWeekCommitment(fresh);
+        setSavedThis(fresh);
+      }
+      // Reflect in the cached users list so a doer switch and switch-back
+      // shows the freshly-saved value without a refetch.
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === doerId
+            ? {
+                ...u,
+                lastWeekCommitment: which === "last" ? fresh : u.lastWeekCommitment,
+                thisWeekCommitment: which === "this" ? fresh : u.thisWeekCommitment,
+              }
+            : u,
+        ),
+      );
+    } catch (e) {
+      setCommitError(e instanceof Error ? e.message : "Couldn't save commitment.");
+    } finally {
+      setSavingWhich(null);
+    }
   };
 
   const selectedUser = users.find((u) => u.id === doerId);
@@ -290,6 +332,12 @@ export default function PerformancePage() {
         </div>
       )}
 
+      {commitError && (
+        <div className="mb-6 rounded-md border border-status-revise/30 bg-status-revise/10 p-3 text-xs text-status-revise">
+          Commitment didn't save: {commitError}
+        </div>
+      )}
+
       {!selectedUser ? (
         <div className="rounded-lg border border-dashed border-border bg-bg-surface p-10 text-center">
           <BarChart3 className="w-8 h-8 text-text-muted mx-auto mb-2" />
@@ -338,25 +386,29 @@ export default function PerformancePage() {
                     <input
                       type="text"
                       value={lastWeekCommitment}
-                      onChange={(e) => {
-                        setLastWeekCommitment(e.target.value);
-                        saveCommitment("last", e.target.value);
-                      }}
+                      onChange={(e) => setLastWeekCommitment(e.target.value)}
+                      onBlur={() => commitOnBlur("last")}
                       placeholder="—"
-                      className="w-full h-9 px-2 rounded-md border border-border bg-bg-surface text-[13px]"
+                      disabled={savingWhich === "last"}
+                      className="w-full h-9 px-2 rounded-md border border-border bg-bg-surface text-[13px] disabled:opacity-60"
                     />
+                    {savingWhich === "last" && (
+                      <div className="mt-1 text-[10px] text-text-muted">Saving…</div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <input
                       type="text"
                       value={thisWeekCommitment}
-                      onChange={(e) => {
-                        setThisWeekCommitment(e.target.value);
-                        saveCommitment("this", e.target.value);
-                      }}
+                      onChange={(e) => setThisWeekCommitment(e.target.value)}
+                      onBlur={() => commitOnBlur("this")}
                       placeholder="What will you commit?"
-                      className="w-full h-9 px-2 rounded-md border border-border bg-bg-surface text-[13px]"
+                      disabled={savingWhich === "this"}
+                      className="w-full h-9 px-2 rounded-md border border-border bg-bg-surface text-[13px] disabled:opacity-60"
                     />
+                    {savingWhich === "this" && (
+                      <div className="mt-1 text-[10px] text-text-muted">Saving…</div>
+                    )}
                   </td>
                 </tr>
                 <tr>

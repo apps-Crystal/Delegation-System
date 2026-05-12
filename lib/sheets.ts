@@ -123,6 +123,8 @@ export async function readUsers(): Promise<User[]> {
   const emailCol = findColumn(headers, DOERLIST_ALIASES.email as readonly string[]);
   const deptCol = findColumn(headers, DOERLIST_ALIASES.department as readonly string[]);
   const roleCol = findColumn(headers, DOERLIST_ALIASES.role as readonly string[]);
+  const lwcCol = findColumn(headers, DOERLIST_ALIASES.lastWeekCommitment as readonly string[]);
+  const twcCol = findColumn(headers, DOERLIST_ALIASES.thisWeekCommitment as readonly string[]);
 
   if (nameCol === -1) {
     throw new Error(
@@ -143,6 +145,10 @@ export async function readUsers(): Promise<User[]> {
       email: emailCol !== -1 ? (r[emailCol] ?? "").toString().trim() : "",
       department: deptCol !== -1 ? (r[deptCol] ?? "").toString().trim() : undefined,
       role: roleCol !== -1 ? (r[roleCol] ?? "").toString().trim() : undefined,
+      lastWeekCommitment:
+        lwcCol !== -1 ? (r[lwcCol] ?? "").toString() : "",
+      thisWeekCommitment:
+        twcCol !== -1 ? (r[twcCol] ?? "").toString() : "",
     });
   }
   return users;
@@ -332,18 +338,35 @@ export interface DoerPatch {
   name?: string;
   phone?: string;
   email?: string;
+  lastWeekCommitment?: string;
+  thisWeekCommitment?: string;
 }
 
 export async function updateDoerRow(
   id: string,
   patch: DoerPatch,
-): Promise<{ row: number; name: string; phone: string; email: string }> {
+): Promise<{
+  row: number;
+  name: string;
+  phone: string;
+  email: string;
+  lastWeekCommitment?: string;
+  thisWeekCommitment?: string;
+}> {
   const row = doerIdToRow(id);
   return await callAppsScript("updateDoer", {
     row,
     ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
     ...(patch.phone !== undefined ? { phone: patch.phone.trim() } : {}),
     ...(patch.email !== undefined ? { email: patch.email.trim() } : {}),
+    // Commitments are free-text and intentionally NOT trimmed (preserve
+    // whatever the user typed verbatim, including trailing spaces if any).
+    ...(patch.lastWeekCommitment !== undefined
+      ? { lastWeekCommitment: patch.lastWeekCommitment }
+      : {}),
+    ...(patch.thisWeekCommitment !== undefined
+      ? { thisWeekCommitment: patch.thisWeekCommitment }
+      : {}),
   });
 }
 

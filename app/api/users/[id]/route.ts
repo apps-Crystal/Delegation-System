@@ -13,9 +13,13 @@ export async function PATCH(
     if (typeof body.name === "string") patch.name = body.name;
     if (typeof body.phone === "string") patch.phone = body.phone;
     if (typeof body.email === "string") patch.email = body.email;
+    if (typeof body.lastWeekCommitment === "string")
+      patch.lastWeekCommitment = body.lastWeekCommitment;
+    if (typeof body.thisWeekCommitment === "string")
+      patch.thisWeekCommitment = body.thisWeekCommitment;
     if (Object.keys(patch).length === 0) {
       return NextResponse.json(
-        { error: "Provide at least one of: name, phone, email." },
+        { error: "Provide at least one field to update." },
         { status: 400 },
       );
     }

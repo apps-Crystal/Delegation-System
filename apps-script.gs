@@ -592,7 +592,7 @@ function _resolveDoerSheet_() {
   const lastCol = Math.max(sheet.getLastColumn(), 1);
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const norm = headers.map(normalize);
-  let nameCol = -1, phoneCol = -1, emailCol = -1;
+  let nameCol = -1, phoneCol = -1, emailCol = -1, lwcCol = -1, twcCol = -1;
   for (let i = 0; i < norm.length; i++) {
     const h = norm[i];
     if (nameCol === -1 && (h === 'name' || h === 'doername' || h === 'fullname')) nameCol = i;
@@ -600,11 +600,22 @@ function _resolveDoerSheet_() {
         h === 'mobilenumber' || h === 'contact' || h === 'contactnumber' || h === 'number')) phoneCol = i;
     if (emailCol === -1 && (h === 'email' || h === 'emailaddress' || h === 'mail' ||
         h === 'emailid' || h === 'mailid')) emailCol = i;
+    if (lwcCol === -1 && (h === 'lastweekcommitment' || h === 'lastweekcommit' ||
+        h === 'previousweekcommitment' || h === 'lwcommitment')) lwcCol = i;
+    if (twcCol === -1 && (h === 'thisweekcommitment' || h === 'thisweekcommit' ||
+        h === 'currentweekcommitment' || h === 'twcommitment')) twcCol = i;
   }
   if (nameCol === -1) {
     throw new Error('Doer List has no Name column. Found headers: ' + headers.join(', '));
   }
-  return { sheet: sheet, nameCol: nameCol, phoneCol: phoneCol, emailCol: emailCol };
+  return {
+    sheet: sheet,
+    nameCol: nameCol,
+    phoneCol: phoneCol,
+    emailCol: emailCol,
+    lastWeekCommitmentCol: lwcCol,
+    thisWeekCommitmentCol: twcCol
+  };
 }
 
 /**
@@ -634,6 +645,14 @@ function updateDoer(payload) {
     if (payload.email !== undefined && info.emailCol !== -1) {
       info.sheet.getRange(row, info.emailCol + 1).setValue(String(payload.email).trim());
     }
+    if (payload.lastWeekCommitment !== undefined && info.lastWeekCommitmentCol !== -1) {
+      info.sheet.getRange(row, info.lastWeekCommitmentCol + 1)
+        .setValue(String(payload.lastWeekCommitment));
+    }
+    if (payload.thisWeekCommitment !== undefined && info.thisWeekCommitmentCol !== -1) {
+      info.sheet.getRange(row, info.thisWeekCommitmentCol + 1)
+        .setValue(String(payload.thisWeekCommitment));
+    }
     SpreadsheetApp.flush();
     flushDoerCache();
 
@@ -642,7 +661,11 @@ function updateDoer(payload) {
       row: row,
       name: String(values[info.nameCol] || ''),
       phone: info.phoneCol !== -1 ? String(values[info.phoneCol] || '') : '',
-      email: info.emailCol !== -1 ? String(values[info.emailCol] || '') : ''
+      email: info.emailCol !== -1 ? String(values[info.emailCol] || '') : '',
+      lastWeekCommitment: info.lastWeekCommitmentCol !== -1
+        ? String(values[info.lastWeekCommitmentCol] || '') : '',
+      thisWeekCommitment: info.thisWeekCommitmentCol !== -1
+        ? String(values[info.thisWeekCommitmentCol] || '') : ''
     };
   } finally {
     lock.releaseLock();

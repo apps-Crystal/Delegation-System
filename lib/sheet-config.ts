@@ -67,6 +67,22 @@ export const DOERLIST_ALIASES = {
   email: ["email", "email address", "mail", "e-mail", "email id", "mail id"],
   department: ["department", "dept"],
   role: ["role", "designation", "position", "title"],
+  lastWeekCommitment: [
+    "last week commitment",
+    "lastweekcommitment",
+    "last week commit",
+    "last-week commitment",
+    "previous week commitment",
+    "lw commitment",
+  ],
+  thisWeekCommitment: [
+    "this week commitment",
+    "thisweekcommitment",
+    "this week commit",
+    "this-week commitment",
+    "current week commitment",
+    "tw commitment",
+  ],
 } as const;
 
 /**
