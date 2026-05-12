@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ClipboardList,
   Users,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTaskCounts, type CountKey } from "@/lib/api";
@@ -63,6 +64,7 @@ const sections: NavSection[] = [
 
 const topItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/performance", label: "Performance Report", icon: BarChart3 },
 ];
 
 const settingsItems: NavItem[] = [
