@@ -27,6 +27,8 @@ interface TaskListPageProps {
   subtitle: string;
   emptyMessage: string;
   showActions?: boolean;
+  /** Reverse the list so the newest rows (latest sheet rows) appear first. */
+  reverse?: boolean;
   // Override allowed actions per page if needed
   allowedActions?: ("complete" | "revise" | "hold" | "restore" | "cancel")[];
 }
@@ -38,6 +40,7 @@ export function TaskListPage({
   subtitle,
   emptyMessage,
   showActions = true,
+  reverse = false,
   allowedActions,
 }: TaskListPageProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -84,8 +87,8 @@ export function TaskListPage({
           t.id.toLowerCase().includes(q)
       );
     }
-    return out;
-  }, [tasks, query, priority]);
+    return reverse ? [...out].reverse() : out;
+  }, [tasks, query, priority, reverse]);
 
   const handleAction = async (
     id: string,

@@ -5,8 +5,9 @@ export default function PendingPage() {
     <TaskListPage
       status="pending"
       title="All Pending"
-      subtitle="Every task that has been delegated but not yet started or completed."
+      subtitle="Every task that has been delegated but not yet started or completed. Newest first."
       emptyMessage="No pending tasks. Use 'Add New Task' to delegate something."
+      reverse
     />
   );
 }
