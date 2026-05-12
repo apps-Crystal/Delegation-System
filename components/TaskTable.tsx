@@ -12,6 +12,7 @@ import {
   X as XIcon,
   Ban,
   MessageSquare,
+  FileText,
 } from "lucide-react";
 import type { Task, TaskStatus } from "@/types/task";
 import { StatusBadge, PriorityBadge } from "./StatusBadge";
@@ -512,7 +513,12 @@ function TaskRow({
       <td className="px-4 py-3 align-top">
         <div className="inline-flex items-center gap-1.5">
           <StatusBadge status={task.status} />
-          {task.holdReason && <HoldReasonButton reason={task.holdReason} />}
+          {task.holdReason && (
+            <NotePeekButton kind="hold" text={task.holdReason} />
+          )}
+          {task.textValidation && (
+            <NotePeekButton kind="completion" text={task.textValidation} />
+          )}
         </div>
       </td>
       {showActions && (
@@ -565,7 +571,12 @@ function TaskCard({
         </div>
         <div className="inline-flex items-center gap-1.5 shrink-0">
           <StatusBadge status={task.status} />
-          {task.holdReason && <HoldReasonButton reason={task.holdReason} />}
+          {task.holdReason && (
+            <NotePeekButton kind="hold" text={task.holdReason} />
+          )}
+          {task.textValidation && (
+            <NotePeekButton kind="completion" text={task.textValidation} />
+          )}
         </div>
       </div>
       <p className="text-text-secondary text-sm leading-snug">
@@ -686,10 +697,33 @@ function RowActions({
   );
 }
 
-/* ---------- Hold reason peek button ---------- */
+/* ---------- Note peek button (hold reason / completion note) ---------- */
 
-function HoldReasonButton({ reason }: { reason: string }) {
+function NotePeekButton({
+  kind,
+  text,
+}: {
+  kind: "hold" | "completion";
+  text: string;
+}) {
   const [open, setOpen] = useState(false);
+  const config =
+    kind === "hold"
+      ? {
+          label: "Hold reason",
+          title: "See hold reason",
+          Icon: MessageSquare,
+          buttonClass: "bg-status-hold/10 text-status-hold border-status-hold/20 hover:bg-status-hold/20",
+          labelClass: "text-status-hold",
+        }
+      : {
+          label: "Completion note",
+          title: "See completion note",
+          Icon: FileText,
+          buttonClass: "bg-status-complete/10 text-status-complete border-status-complete/20 hover:bg-status-complete/20",
+          labelClass: "text-status-complete",
+        };
+  const Icon = config.Icon;
   return (
     <span className="relative inline-flex">
       <button
@@ -699,20 +733,28 @@ function HoldReasonButton({ reason }: { reason: string }) {
           setOpen((v) => !v);
         }}
         onBlur={() => setTimeout(() => setOpen(false), 200)}
-        title="See hold reason"
-        className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-status-hold/10 text-status-hold border border-status-hold/20 hover:bg-status-hold/20 transition-colors"
+        title={config.title}
+        className={cn(
+          "inline-flex items-center justify-center w-6 h-6 rounded-md border transition-colors",
+          config.buttonClass,
+        )}
       >
-        <MessageSquare className="w-3 h-3" />
+        <Icon className="w-3 h-3" />
       </button>
       {open && (
         <span
           role="tooltip"
           className="absolute top-full right-0 mt-1 z-30 min-w-[200px] max-w-[320px] rounded-md border border-border bg-bg-surface shadow-card px-3 py-2 text-[12px] text-text-primary leading-snug whitespace-normal"
         >
-          <span className="block text-[10px] uppercase tracking-wider text-status-hold font-semibold mb-1">
-            Hold reason
+          <span
+            className={cn(
+              "block text-[10px] uppercase tracking-wider font-semibold mb-1",
+              config.labelClass,
+            )}
+          >
+            {config.label}
           </span>
-          {reason}
+          {text}
         </span>
       )}
     </span>
