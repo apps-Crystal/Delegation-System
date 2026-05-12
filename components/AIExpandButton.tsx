@@ -107,7 +107,7 @@ export function AIExpandButton({ text, onExpand, className }: AIExpandButtonProp
           open
           onClose={closeModal}
           title="Choose an AI insight"
-          description="Three rewrites of your task. Pick one to replace your text, or close to keep what you wrote."
+          description="Three short rewrites of your task. Pick whichever reads best, or close to keep what you wrote."
           className="max-w-2xl"
         >
           <div className="space-y-3">
