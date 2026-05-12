@@ -16,6 +16,7 @@ import type { User } from "@/types/user";
 import type { TaskPriority, NewTaskInput } from "@/types/task";
 import { Button } from "./Button";
 import { VoiceInput } from "./VoiceInput";
+import { AIExpandButton } from "./AIExpandButton";
 import { cn } from "@/lib/utils";
 
 interface TaskFormProps {
@@ -308,22 +309,26 @@ function RowEditor({
         )}
       </div>
 
-      {/* Description (with optional voice input) */}
+      {/* Description (with optional voice + AI helpers) */}
       <div className="relative">
         <textarea
           value={row.description}
           onChange={(e) => onChange({ description: e.target.value })}
           rows={2}
-          placeholder="Describe what needs to be done… or tap the mic to speak."
-          className="w-full px-3 py-2 pr-10 rounded-md text-[13px] resize-none leading-relaxed"
+          placeholder="Describe what needs to be done… tap the mic to speak, or the sparkle to let AI clarify."
+          className="w-full px-3 py-2 pr-20 rounded-md text-[13px] resize-none leading-relaxed"
         />
-        <div className="absolute top-1 right-1">
+        <div className="absolute top-1 right-1 flex items-center gap-0.5">
           <VoiceInput
             onAppend={(text) => {
               const sep = row.description && !/\s$/.test(row.description) ? " " : "";
               onChange({ description: row.description + sep + text });
             }}
             title="Speak the task description"
+          />
+          <AIExpandButton
+            text={row.description}
+            onExpand={(expanded) => onChange({ description: expanded })}
           />
         </div>
       </div>
