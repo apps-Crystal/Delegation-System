@@ -69,6 +69,9 @@ const settingsItems: NavItem[] = [
   { href: "/setup", label: "Setup & Health", icon: Settings },
 ];
 
+/** Only this email sees Setup & Health in the sidebar. */
+const SETUP_ADMIN_EMAIL = "apps@crystalgroup.in";
+
 export function Sidebar({ user = null }: SidebarProps = {}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -242,19 +245,21 @@ export function Sidebar({ user = null }: SidebarProps = {}) {
             );
           })}
 
-          {/* Settings */}
-          <ul className="mt-3 px-2">
-            {settingsItems.map((item) => (
-              <li key={item.href}>
-                <SidebarLink
-                  item={item}
-                  active={pathname.startsWith(item.href)}
-                  count={undefined}
-                  onClick={() => setOpen(false)}
-                />
-              </li>
-            ))}
-          </ul>
+          {/* Settings — only visible to the configured admin email */}
+          {user?.email?.toLowerCase() === SETUP_ADMIN_EMAIL && (
+            <ul className="mt-3 px-2">
+              {settingsItems.map((item) => (
+                <li key={item.href}>
+                  <SidebarLink
+                    item={item}
+                    active={pathname.startsWith(item.href)}
+                    count={undefined}
+                    onClick={() => setOpen(false)}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
         </nav>
 
         {/* Footer / user + logout */}
