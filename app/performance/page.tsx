@@ -10,6 +10,8 @@ import {
   ChevronDown,
   Check,
   Phone,
+  Save,
+  Loader2,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { TaskTable } from "@/components/TaskTable";
@@ -60,13 +62,14 @@ export default function PerformancePage() {
   const [tab, setTab] = useState<TabKey>("pending");
 
   // Commitments live on the Doer List sheet (Last/This Week Commitment columns).
-  // Local state is the in-flight value; we persist on blur to avoid one Apps
-  // Script write per keystroke.
+  // Each field has its own explicit Save button so the user can see the action
+  // and we don't fire one Apps Script call per keystroke.
   const [lastWeekCommitment, setLastWeekCommitment] = useState("");
   const [thisWeekCommitment, setThisWeekCommitment] = useState("");
   const [savedLast, setSavedLast] = useState("");
   const [savedThis, setSavedThis] = useState("");
   const [savingWhich, setSavingWhich] = useState<"last" | "this" | null>(null);
+  const [justSavedWhich, setJustSavedWhich] = useState<"last" | "this" | null>(null);
   const [commitError, setCommitError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -96,11 +99,9 @@ export default function PerformancePage() {
     setCommitError(null);
   }, [doerId, users]);
 
-  const commitOnBlur = async (which: "last" | "this") => {
+  const saveCommitment = async (which: "last" | "this") => {
     if (!doerId) return;
     const value = which === "last" ? lastWeekCommitment : thisWeekCommitment;
-    const saved = which === "last" ? savedLast : savedThis;
-    if (value === saved) return; // nothing changed
     setSavingWhich(which);
     setCommitError(null);
     try {
@@ -129,6 +130,10 @@ export default function PerformancePage() {
             : u,
         ),
       );
+      setJustSavedWhich(which);
+      setTimeout(() => {
+        setJustSavedWhich((curr) => (curr === which ? null : curr));
+      }, 1800);
     } catch (e) {
       setCommitError(e instanceof Error ? e.message : "Couldn't save commitment.");
     } finally {
@@ -383,32 +388,26 @@ export default function PerformancePage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <input
-                      type="text"
+                    <CommitmentCell
                       value={lastWeekCommitment}
-                      onChange={(e) => setLastWeekCommitment(e.target.value)}
-                      onBlur={() => commitOnBlur("last")}
+                      onChange={setLastWeekCommitment}
+                      onSave={() => saveCommitment("last")}
                       placeholder="—"
-                      disabled={savingWhich === "last"}
-                      className="w-full h-9 px-2 rounded-md border border-border bg-bg-surface text-[13px] disabled:opacity-60"
+                      saving={savingWhich === "last"}
+                      justSaved={justSavedWhich === "last"}
+                      dirty={lastWeekCommitment !== savedLast}
                     />
-                    {savingWhich === "last" && (
-                      <div className="mt-1 text-[10px] text-text-muted">Saving…</div>
-                    )}
                   </td>
                   <td className="px-4 py-3">
-                    <input
-                      type="text"
+                    <CommitmentCell
                       value={thisWeekCommitment}
-                      onChange={(e) => setThisWeekCommitment(e.target.value)}
-                      onBlur={() => commitOnBlur("this")}
+                      onChange={setThisWeekCommitment}
+                      onSave={() => saveCommitment("this")}
                       placeholder="What will you commit?"
-                      disabled={savingWhich === "this"}
-                      className="w-full h-9 px-2 rounded-md border border-border bg-bg-surface text-[13px] disabled:opacity-60"
+                      saving={savingWhich === "this"}
+                      justSaved={justSavedWhich === "this"}
+                      dirty={thisWeekCommitment !== savedThis}
                     />
-                    {savingWhich === "this" && (
-                      <div className="mt-1 text-[10px] text-text-muted">Saving…</div>
-                    )}
                   </td>
                 </tr>
                 <tr>
@@ -495,6 +494,72 @@ export default function PerformancePage() {
             <TaskTable tasks={tabTasks} showActions={false} onAction={async () => {}} />
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+function CommitmentCell({
+  value,
+  onChange,
+  onSave,
+  placeholder,
+  saving,
+  justSaved,
+  dirty,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  onSave: () => void;
+  placeholder: string;
+  saving: boolean;
+  justSaved: boolean;
+  dirty: boolean;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-stretch gap-1.5">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (!saving && dirty) onSave();
+            }
+          }}
+          placeholder={placeholder}
+          disabled={saving}
+          className="flex-1 min-w-0 h-9 px-2 rounded-md border border-border bg-bg-surface text-[13px] disabled:opacity-60"
+        />
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving || !dirty}
+          className={cn(
+            "h-9 px-2.5 rounded-md text-[12px] font-medium inline-flex items-center gap-1.5 transition-colors",
+            dirty && !saving
+              ? "bg-accent text-white hover:bg-accent/90"
+              : "bg-bg-elevated text-text-muted border border-border",
+            saving && "opacity-70 cursor-wait",
+          )}
+          aria-label="Save commitment"
+        >
+          {saving ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : justSaved ? (
+            <Check className="w-3.5 h-3.5" />
+          ) : (
+            <Save className="w-3.5 h-3.5" />
+          )}
+          <span className="hidden sm:inline">
+            {saving ? "Saving" : justSaved ? "Saved" : "Save"}
+          </span>
+        </button>
+      </div>
+      {dirty && !saving && (
+        <div className="text-[10px] text-status-revise">Unsaved changes — click Save.</div>
       )}
     </div>
   );

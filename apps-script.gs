@@ -645,11 +645,23 @@ function updateDoer(payload) {
     if (payload.email !== undefined && info.emailCol !== -1) {
       info.sheet.getRange(row, info.emailCol + 1).setValue(String(payload.email).trim());
     }
-    if (payload.lastWeekCommitment !== undefined && info.lastWeekCommitmentCol !== -1) {
+    if (payload.lastWeekCommitment !== undefined) {
+      if (info.lastWeekCommitmentCol === -1) {
+        throw new Error(
+          'Doer List has no "Last Week Commitment" column. ' +
+          'Add a column with that header in row 1 of the Doer List sheet.'
+        );
+      }
       info.sheet.getRange(row, info.lastWeekCommitmentCol + 1)
         .setValue(String(payload.lastWeekCommitment));
     }
-    if (payload.thisWeekCommitment !== undefined && info.thisWeekCommitmentCol !== -1) {
+    if (payload.thisWeekCommitment !== undefined) {
+      if (info.thisWeekCommitmentCol === -1) {
+        throw new Error(
+          'Doer List has no "This Week Commitment" column. ' +
+          'Add a column with that header in row 1 of the Doer List sheet.'
+        );
+      }
       info.sheet.getRange(row, info.thisWeekCommitmentCol + 1)
         .setValue(String(payload.thisWeekCommitment));
     }
