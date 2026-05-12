@@ -2,12 +2,18 @@
  * POST /api/ai/expand
  *
  * Body: { text: string }
- * Returns: { expanded: string }
+ * Returns: { options: { label: string; text: string }[] }
  *
- * Server-side proxy to Google's Gemini API. The API key never reaches the
- * browser — it lives in GEMINI_API_KEY on the server. Used by the AI
- * button on the task description field to rewrite a brief input into a
- * clearer, more actionable version.
+ * Server-side proxy to Google's Gemini API. The API key never reaches
+ * the browser — it lives in GEMINI_API_KEY on the server.
+ *
+ * Returns three labelled rewrites of the user's brief task description
+ * so the caller can pick the framing that suits the situation best:
+ *   - "Brief"        — one short, direct sentence.
+ *   - "Detailed"     — 3–4 sentences with context and expected outcome.
+ *   - "Step-by-step" — sequential actions written as prose ("First …,
+ *                      then …, finally …") so the doer has an explicit
+ *                      execution plan.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -16,18 +22,29 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MODEL = "gemini-2.5-flash";
-const MAX_INPUT_CHARS = 800;
-const MAX_OUTPUT_TOKENS = 220;
+const MAX_INPUT_CHARS = 1000;
+const MAX_OUTPUT_TOKENS = 900;
 
 const PROMPT_TEMPLATE = (input: string) =>
   `You are a task description writer for a corporate task delegation system.
-Rewrite the user's brief task into a clearer, more actionable single description.
 
-Rules:
-- 1 to 2 sentences, max 40 words total.
-- Plain prose only. No headers, no lists, no bullets, no markdown, no emojis.
-- Preserve the user's intent. Do not invent deadlines, names, or assumptions not in the input.
-- Output ONLY the rewritten task. No preamble, no quotes.
+The user has typed a brief task. Produce THREE different rewrites of it, each
+useful for a different situation.
+
+1. "brief"     — One short, direct sentence (10–20 words). Clear and actionable.
+2. "detailed"  — Three to four sentences (40–70 words) that elaborate on what
+                 needs to be done, why it matters, and the expected outcome.
+                 Add reasonable, generic context only — do NOT invent specific
+                 names, dates, deadlines, dollar figures or external facts.
+3. "steps"     — A single-paragraph sequence of concrete actions (50–90 words)
+                 written as prose using sequencing words ("First …, then …,
+                 next …, finally …"). The doer should know exactly what order
+                 to do things in after reading it.
+
+Rules for ALL three:
+- Plain prose only. No markdown, no bullets, no headers, no quotes, no emojis.
+- Preserve the user's intent. Do not change what they are asking for.
+- Use formal, professional English.
 
 Task: ${input}`;
 
@@ -36,6 +53,12 @@ interface GeminiResponse {
     content?: { parts?: { text?: string }[] };
   }[];
   promptFeedback?: { blockReason?: string };
+}
+
+interface StructuredOutput {
+  brief?: string;
+  detailed?: string;
+  steps?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -68,9 +91,19 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           contents: [{ parts: [{ text: PROMPT_TEMPLATE(text) }] }],
           generationConfig: {
-            temperature: 0.4,
+            temperature: 0.6,
             topP: 0.9,
             maxOutputTokens: MAX_OUTPUT_TOKENS,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                brief: { type: "STRING" },
+                detailed: { type: "STRING" },
+                steps: { type: "STRING" },
+              },
+              required: ["brief", "detailed", "steps"],
+            },
           },
         }),
         cache: "no-store",
@@ -93,12 +126,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const expanded =
+    const raw =
       json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim() ?? "";
-    if (!expanded) {
+    if (!raw) {
       return NextResponse.json({ error: "Empty response from AI." }, { status: 502 });
     }
-    return NextResponse.json({ expanded });
+
+    let parsed: StructuredOutput;
+    try {
+      parsed = JSON.parse(raw) as StructuredOutput;
+    } catch {
+      return NextResponse.json(
+        { error: "AI returned malformed JSON. Try again." },
+        { status: 502 },
+      );
+    }
+
+    const options = [
+      { label: "Brief", text: (parsed.brief ?? "").trim() },
+      { label: "Detailed", text: (parsed.detailed ?? "").trim() },
+      { label: "Step-by-step", text: (parsed.steps ?? "").trim() },
+    ].filter((o) => o.text.length > 0);
+
+    if (options.length === 0) {
+      return NextResponse.json({ error: "AI returned no usable text." }, { status: 502 });
+    }
+
+    return NextResponse.json({ options });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json({ error: msg }, { status: 500 });

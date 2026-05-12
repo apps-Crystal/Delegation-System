@@ -79,12 +79,17 @@ export async function deleteDoer(id: string): Promise<{ deleted: boolean; row: n
 
 /* ---------- AI ---------- */
 
-export async function expandTaskDescription(text: string): Promise<string> {
-  const data = await jfetch<{ expanded: string }>("/api/ai/expand", {
+export interface AIInsight {
+  label: string;
+  text: string;
+}
+
+export async function expandTaskDescription(text: string): Promise<AIInsight[]> {
+  const data = await jfetch<{ options: AIInsight[] }>("/api/ai/expand", {
     method: "POST",
     body: JSON.stringify({ text }),
   });
-  return data.expanded;
+  return data.options ?? [];
 }
 
 /* ---------- TASKS ---------- */
