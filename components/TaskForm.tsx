@@ -15,6 +15,7 @@ import {
 import type { User } from "@/types/user";
 import type { TaskPriority, NewTaskInput } from "@/types/task";
 import { Button } from "./Button";
+import { VoiceInput } from "./VoiceInput";
 import { cn } from "@/lib/utils";
 
 interface TaskFormProps {
@@ -307,14 +308,25 @@ function RowEditor({
         )}
       </div>
 
-      {/* Description */}
-      <textarea
-        value={row.description}
-        onChange={(e) => onChange({ description: e.target.value })}
-        rows={2}
-        placeholder="Describe what needs to be done…"
-        className="w-full px-3 py-2 rounded-md text-[13px] resize-none leading-relaxed"
-      />
+      {/* Description (with optional voice input) */}
+      <div className="relative">
+        <textarea
+          value={row.description}
+          onChange={(e) => onChange({ description: e.target.value })}
+          rows={2}
+          placeholder="Describe what needs to be done… or tap the mic to speak."
+          className="w-full px-3 py-2 pr-10 rounded-md text-[13px] resize-none leading-relaxed"
+        />
+        <div className="absolute top-1 right-1">
+          <VoiceInput
+            onAppend={(text) => {
+              const sep = row.description && !/\s$/.test(row.description) ? " " : "";
+              onChange({ description: row.description + sep + text });
+            }}
+            title="Speak the task description"
+          />
+        </div>
+      </div>
 
       {/* Date + priority */}
       <div className="grid sm:grid-cols-[180px_1fr] gap-2.5 mt-2.5">
