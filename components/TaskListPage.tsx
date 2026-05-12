@@ -33,7 +33,7 @@ interface TaskListPageProps {
   /** Reverse the list so the newest rows (latest sheet rows) appear first. */
   reverse?: boolean;
   // Override allowed actions per page if needed
-  allowedActions?: ("complete" | "revise" | "hold" | "restore" | "cancel")[];
+  allowedActions?: ("complete" | "revise" | "hold" | "restore" | "cancel" | "edit")[];
 }
 
 export function TaskListPage({
