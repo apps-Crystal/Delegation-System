@@ -19,14 +19,13 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getTaskCounts } from "@/lib/api";
-import type { TaskStatus } from "@/types/task";
+import { getTaskCounts, type CountKey } from "@/lib/api";
 
 type NavItem = {
   href: string;
   label: string;
   icon?: React.ElementType;
-  countKey?: TaskStatus;
+  countKey?: CountKey;
 };
 
 type NavSection = {
@@ -47,6 +46,7 @@ const sections: NavSection[] = [
       { href: "/add-task", label: "New Task" },
       { href: "/pending", label: "All Pending", countKey: "pending" },
       { href: "/follow-up", label: "Follow Up", countKey: "follow-up" },
+      { href: "/overdue", label: "Overdue", countKey: "overdue" },
       { href: "/on-hold", label: "On Hold", countKey: "on-hold" },
       { href: "/completed", label: "Completed", countKey: "completed" },
     ],
@@ -72,13 +72,14 @@ const settingsItems: NavItem[] = [
 export function Sidebar({ user = null }: SidebarProps = {}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [counts, setCounts] = useState<Record<TaskStatus, number>>({
+  const [counts, setCounts] = useState<Record<CountKey, number>>({
     pending: 0,
     "follow-up": 0,
     "on-hold": 0,
     completed: 0,
     cancelled: 0,
     "week-shifted": 0,
+    overdue: 0,
   });
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(
     Object.fromEntries(sections.map((s) => [s.label, true]))

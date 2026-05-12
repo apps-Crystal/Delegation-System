@@ -19,10 +19,12 @@ import {
 import type { Task, TaskStatus, TaskPriority } from "@/types/task";
 
 interface TaskListPageProps {
-  /** Filter by status. Omit when using `dueToday`. */
+  /** Filter by status. Omit when using `dueToday` or `overdue`. */
   status?: TaskStatus;
-  /** Show all active (non-completed) tasks whose plannedDate is today. */
+  /** Show all active (non-completed) tasks whose plannedDate is today or earlier. */
   dueToday?: boolean;
+  /** Show all active (non-completed) tasks whose plannedDate is strictly before today. */
+  overdue?: boolean;
   title: string;
   subtitle: string;
   emptyMessage: string;
@@ -36,6 +38,7 @@ interface TaskListPageProps {
 export function TaskListPage({
   status,
   dueToday,
+  overdue,
   title,
   subtitle,
   emptyMessage,
@@ -52,12 +55,23 @@ export function TaskListPage({
   const refresh = async () => {
     try {
       setError(null);
-      const all = dueToday ? await getTasks() : await getTasks(status);
+      const needsAll = dueToday || overdue;
+      const all = needsAll ? await getTasks() : await getTasks(status);
       let next = all;
       if (dueToday) {
         const today = new Date().toISOString().slice(0, 10);
         next = all.filter(
           (t) => t.status === "pending" && t.plannedDate <= today,
+        );
+      } else if (overdue) {
+        const today = new Date().toISOString().slice(0, 10);
+        next = all.filter(
+          (t) =>
+            t.status !== "completed" &&
+            t.status !== "cancelled" &&
+            t.status !== "week-shifted" &&
+            !!t.plannedDate &&
+            t.plannedDate < today,
         );
       }
       setTasks(next);
@@ -72,7 +86,7 @@ export function TaskListPage({
     setLoading(true);
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, dueToday]);
+  }, [status, dueToday, overdue]);
 
   const filtered = useMemo(() => {
     let out = tasks;

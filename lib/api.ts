@@ -154,10 +154,12 @@ export async function cancelTask(id: string): Promise<Task> {
 
 /* ---------- AGGREGATES ---------- */
 
-export async function getTaskCounts(): Promise<Record<TaskStatus, number>> {
+export type CountKey = TaskStatus | "overdue";
+
+export async function getTaskCounts(): Promise<Record<CountKey, number>> {
   const tasks = await getTasks();
   const today = new Date().toISOString().slice(0, 10);
-  // "follow-up" is now a *view* (tasks due today) rather than a status.
+  // "follow-up" and "overdue" are *views* rather than statuses.
   // Pending / on-hold / completed counts still come from the status field.
   return tasks.reduce(
     (acc, t) => {
@@ -167,15 +169,13 @@ export async function getTaskCounts(): Promise<Record<TaskStatus, number>> {
       else if (t.status === "cancelled") acc.cancelled++;
       else if (t.status === "week-shifted") acc["week-shifted"]++;
       // Inactive rows (completed / cancelled / week-shifted) excluded
-      // from the "due today" tally.
-      if (
+      // from the "due today" and "overdue" tallies.
+      const active =
         t.status !== "completed" &&
         t.status !== "cancelled" &&
-        t.status !== "week-shifted" &&
-        t.plannedDate === today
-      ) {
-        acc["follow-up"]++;
-      }
+        t.status !== "week-shifted";
+      if (active && t.plannedDate === today) acc["follow-up"]++;
+      if (active && t.plannedDate && t.plannedDate < today) acc.overdue++;
       return acc;
     },
     {
@@ -185,7 +185,8 @@ export async function getTaskCounts(): Promise<Record<TaskStatus, number>> {
       completed: 0,
       cancelled: 0,
       "week-shifted": 0,
-    } as Record<TaskStatus, number>
+      overdue: 0,
+    } as Record<CountKey, number>
   );
 }
 

@@ -6,7 +6,7 @@ import { ArrowUpRight, Clock, ListChecks, PauseCircle, CheckCircle2, PlusCircle,
 import { Header } from "@/components/Header";
 import { TaskTable } from "@/components/TaskTable";
 import { Button } from "@/components/Button";
-import { getTasks, getTaskCounts, markTaskComplete, holdTask, reviseTask, restoreTask, cancelTask } from "@/lib/api";
+import { getTasks, getTaskCounts, markTaskComplete, holdTask, reviseTask, restoreTask, cancelTask, type CountKey } from "@/lib/api";
 import type { Task, TaskStatus } from "@/types/task";
 import { cn } from "@/lib/utils";
 
@@ -46,13 +46,14 @@ const statCards = [
 ];
 
 export default function DashboardPage() {
-  const [counts, setCounts] = useState<Record<TaskStatus, number>>({
+  const [counts, setCounts] = useState<Record<CountKey, number>>({
     pending: 0,
     "follow-up": 0,
     "on-hold": 0,
     completed: 0,
     cancelled: 0,
     "week-shifted": 0,
+    overdue: 0,
   });
   const [recent, setRecent] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
