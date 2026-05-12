@@ -331,7 +331,11 @@ function updateTask(payload) {
   }
 
   if (payload.status !== undefined) setCellIfMapped(sheet, row, map.status, payload.status);
-  if (payload.holdReason !== undefined) setCellIfMapped(sheet, row, map.holdReason, payload.holdReason);
+  // Hold reasons share the Text Validation column with completion notes —
+  // a deliberate consolidation requested by the user. Newest write wins,
+  // so completing a held task overwrites the hold reason. Use the peek
+  // button next to the status badge to view whichever note is current.
+  if (payload.holdReason !== undefined) setCellIfMapped(sheet, row, map.textValidation, payload.holdReason);
   if (payload.reviseNote !== undefined) setCellIfMapped(sheet, row, map.reviseNote, payload.reviseNote);
   if (payload.plannedDate !== undefined) setCellIfMapped(sheet, row, map.plannedDate, payload.plannedDate);
   if (payload.completedAt !== undefined) setCellIfMapped(sheet, row, map.completedAt, payload.completedAt);

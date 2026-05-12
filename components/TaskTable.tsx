@@ -513,11 +513,11 @@ function TaskRow({
       <td className="px-4 py-3 align-top">
         <div className="inline-flex items-center gap-1.5">
           <StatusBadge status={task.status} />
-          {task.holdReason && (
-            <NotePeekButton kind="hold" text={task.holdReason} />
-          )}
           {task.textValidation && (
-            <NotePeekButton kind="completion" text={task.textValidation} />
+            <NotePeekButton
+              kind={task.status === "on-hold" ? "hold" : "completion"}
+              text={task.textValidation}
+            />
           )}
         </div>
       </td>
@@ -571,11 +571,11 @@ function TaskCard({
         </div>
         <div className="inline-flex items-center gap-1.5 shrink-0">
           <StatusBadge status={task.status} />
-          {task.holdReason && (
-            <NotePeekButton kind="hold" text={task.holdReason} />
-          )}
           {task.textValidation && (
-            <NotePeekButton kind="completion" text={task.textValidation} />
+            <NotePeekButton
+              kind={task.status === "on-hold" ? "hold" : "completion"}
+              text={task.textValidation}
+            />
           )}
         </div>
       </div>
