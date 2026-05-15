@@ -8,6 +8,7 @@ import { TaskTable } from "./TaskTable";
 import { SearchBar } from "./SearchBar";
 import { FilterBar } from "./FilterBar";
 import { Button } from "./Button";
+import { exportTasksToExcel, exportTasksToPDF } from "@/lib/exportUtils";
 import {
   getTasks,
   markTaskComplete,
@@ -148,18 +149,33 @@ export function TaskListPage({
     }
   };
 
+  const handleExportExcel = () => {
+    exportTasksToExcel(filtered, `${title.replace(/\s+/g, "_").toLowerCase()}_tasks.xlsx`);
+  };
+  const handleExportPDF = () => {
+    exportTasksToPDF(filtered, `${title.replace(/\s+/g, "_").toLowerCase()}_tasks.pdf`);
+  };
+
   return (
     <div className="animate-slide-up">
       <Header
         title={title}
         subtitle={subtitle}
         actions={
-          <Link href="/add-task">
-            <Button>
-              <PlusCircle className="w-4 h-4" />
-              New Task
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={handleExportExcel} type="button">
+              Export Excel
             </Button>
-          </Link>
+            <Button variant="secondary" size="sm" onClick={handleExportPDF} type="button">
+              Export PDF
+            </Button>
+            <Link href="/add-task">
+              <Button>
+                <PlusCircle className="w-4 h-4" />
+                New Task
+              </Button>
+            </Link>
+          </div>
         }
       />
 
