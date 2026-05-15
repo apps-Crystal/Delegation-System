@@ -8,6 +8,8 @@ import {
   Phone,
   Trash2,
   Users,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getUsers, getTasks, updateDoer, deleteDoer } from "@/lib/api";
@@ -16,6 +18,9 @@ import { Button } from "@/components/Button";
 import { StatusBadge } from "@/components/StatusBadge";
 import type { User } from "@/types/user";
 import type { Task, TaskStatus } from "@/types/task";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface DoerWithTasks extends User {
   tasks: Task[];
@@ -90,9 +95,68 @@ export function DoerList() {
     );
   }, [enriched, query]);
 
+  // --- Export functions ---
+  const exportDoersToExcel = (doersToExport: DoerWithTasks[], filename: string) => {
+    const rows = doersToExport.map((d) => ({
+      Name: d.name,
+      Phone: d.phone || "",
+      Email: d.email || "",
+      Pending: d.counts.pending,
+      "Follow‑up": d.counts["follow-up"],
+      "On‑hold": d.counts["on-hold"],
+      Completed: d.counts.completed,
+      Cancelled: d.counts.cancelled,
+      "Week‑shifted": d.counts["week-shifted"],
+      "Total tasks": d.tasks.length,
+      "Active tasks": d.counts.pending + d.counts["follow-up"] + d.counts["on-hold"],
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Doers");
+    XLSX.writeFile(wb, filename);
+  };
+
+  const exportDoersToPDF = (doersToExport: DoerWithTasks[], filename: string) => {
+    const doc = new jsPDF({ orientation: "landscape" });
+    const tableData = doersToExport.map((d) => [
+      d.name,
+      d.phone || "",
+      d.email || "",
+      d.counts.pending,
+      d.counts["follow-up"],
+      d.counts["on-hold"],
+      d.counts.completed,
+      d.counts.cancelled,
+      d.counts["week-shifted"],
+      d.tasks.length,
+      d.counts.pending + d.counts["follow-up"] + d.counts["on-hold"],
+    ]);
+    autoTable(doc, {
+      head: [[
+        "Name", "Phone", "Email",
+        "Pending", "Follow‑up", "On‑hold",
+        "Completed", "Cancelled", "Week‑shifted",
+        "Total", "Active"
+      ]],
+      body: tableData,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [240, 240, 240] },
+      margin: { top: 10, left: 10, right: 10 },
+    });
+    doc.save(filename);
+  };
+
+  const handleExportExcel = () => {
+    exportDoersToExcel(filtered, `doers_${new Date().toISOString().slice(0, 19)}.xlsx`);
+  };
+  const handleExportPDF = () => {
+    exportDoersToPDF(filtered, `doers_${new Date().toISOString().slice(0, 19)}.pdf`);
+  };
+
   return (
     <div className="mt-8 rounded-lg border border-border-subtle bg-bg-surface shadow-card">
-      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border-subtle">
+      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border-subtle flex-wrap">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-md bg-accent/10 flex items-center justify-center text-accent">
             <Users className="w-4 h-4" />
@@ -106,13 +170,23 @@ export function DoerList() {
             </p>
           </div>
         </div>
-        <input
-          type="text"
-          placeholder="Search name, phone, email…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="h-9 px-3 text-xs rounded-md bg-bg-elevated border border-border placeholder:text-text-muted focus:bg-bg-surface w-56"
-        />
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={handleExportExcel} type="button">
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            Excel
+          </Button>
+          <Button variant="secondary" size="sm" onClick={handleExportPDF} type="button">
+            <FileText className="w-3.5 h-3.5" />
+            PDF
+          </Button>
+          <input
+            type="text"
+            placeholder="Search name, phone, email…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="h-9 px-3 text-xs rounded-md bg-bg-elevated border border-border placeholder:text-text-muted focus:bg-bg-surface w-56"
+          />
+        </div>
       </div>
 
       {loading && (
