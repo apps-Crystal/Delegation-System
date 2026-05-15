@@ -392,7 +392,7 @@ export default function PerformancePage() {
                   <th className="text-center px-4 py-2.5">% Not Completed</th>
                   <th className="text-left px-4 py-2.5">Last Week Commitment</th>
                   <th className="text-left px-4 py-2.5">This Week Commitment</th>
-                </td>
+                </tr>
               </thead>
               <tbody>
                 <tr className="border-b border-border-subtle">
