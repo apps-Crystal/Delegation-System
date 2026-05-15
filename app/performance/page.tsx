@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
   Phone,
   Save,
   Loader2,
+  Search,
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { TaskTable } from "@/components/TaskTable";
@@ -57,13 +58,13 @@ export default function PerformancePage() {
 
   const [doerId, setDoerId] = useState("");
   const [doerOpen, setDoerOpen] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [fromDate, setFromDate] = useState(DAYS_AGO(7));
   const [toDate, setToDate] = useState(TODAY());
   const [tab, setTab] = useState<TabKey>("pending");
 
   // Commitments live on the Doer List sheet (Last/This Week Commitment columns).
-  // Each field has its own explicit Save button so the user can see the action
-  // and we don't fire one Apps Script call per keystroke.
   const [lastWeekCommitment, setLastWeekCommitment] = useState("");
   const [thisWeekCommitment, setThisWeekCommitment] = useState("");
   const [savedLast, setSavedLast] = useState("");
@@ -86,8 +87,7 @@ export default function PerformancePage() {
     })();
   }, []);
 
-  // Whenever a different doer is selected, seed the commitment inputs from
-  // that doer's sheet row.
+  // Whenever a different doer is selected, seed the commitment inputs from that doer's sheet row.
   useEffect(() => {
     const u = users.find((x) => x.id === doerId);
     const lw = u?.lastWeekCommitment ?? "";
@@ -108,7 +108,6 @@ export default function PerformancePage() {
       const res = await updateDoer(doerId, {
         [which === "last" ? "lastWeekCommitment" : "thisWeekCommitment"]: value,
       });
-      // Reflect what the sheet returned (it's the source of truth).
       const fresh = which === "last" ? res.lastWeekCommitment ?? value : res.thisWeekCommitment ?? value;
       if (which === "last") {
         setLastWeekCommitment(fresh);
@@ -117,8 +116,6 @@ export default function PerformancePage() {
         setThisWeekCommitment(fresh);
         setSavedThis(fresh);
       }
-      // Reflect in the cached users list so a doer switch and switch-back
-      // shows the freshly-saved value without a refetch.
       setUsers((prev) =>
         prev.map((u) =>
           u.id === doerId
@@ -142,6 +139,12 @@ export default function PerformancePage() {
   };
 
   const selectedUser = users.find((u) => u.id === doerId);
+  const filteredUsers = useMemo(() => {
+    if (!userSearchQuery.trim()) return users;
+    return users.filter((u) =>
+      u.name.toLowerCase().includes(userSearchQuery.toLowerCase())
+    );
+  }, [users, userSearchQuery]);
 
   /** Tasks assigned to the selected doer (no date filter yet). */
   const doerAllTasks = useMemo(() => {
@@ -156,7 +159,7 @@ export default function PerformancePage() {
     );
   }, [doerAllTasks, fromDate, toDate]);
 
-  // ─── Stats (current range) ──────────────────────────────────────────────
+  // Stats (current range)
   const planned = doerRangeTasks.length;
   const completedTasks = doerRangeTasks.filter((t) => t.status === "completed");
   const completed = completedTasks.length;
@@ -168,7 +171,7 @@ export default function PerformancePage() {
   const completedPct = pct(completed, planned);
   const onTimePct = pct(onTime, planned);
 
-  // ─── Last week stats (fixed Mon-Sun) ───────────────────────────────────
+  // Last week stats
   const lw = lastWeekRange();
   const lastWeekTasks = doerAllTasks.filter(
     (t) => t.plannedDate && t.plannedDate >= lw.start && t.plannedDate <= lw.end,
@@ -184,7 +187,7 @@ export default function PerformancePage() {
   const lastWeekCompletedPct = pct(lastWeekCompleted, lastWeekTasks.length);
   const lastWeekOnTimePct = pct(lastWeekOnTime, lastWeekTasks.length);
 
-  // ─── Task lists for the bottom tab ──────────────────────────────────────
+  // Task lists for bottom tab
   const pendingList = doerRangeTasks.filter((t) => t.status === "pending");
   const completedList = completedTasks;
   const tabTasks =
@@ -193,6 +196,19 @@ export default function PerformancePage() {
     pending: pendingList.length,
     completed: completedList.length,
     all: doerRangeTasks.length,
+  };
+
+  const handleOpenDropdown = () => {
+    setDoerOpen(true);
+    setUserSearchQuery("");
+    // Focus search input after render
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  };
+
+  const handleSelectUser = (userId: string) => {
+    setDoerId(userId);
+    setDoerOpen(false);
+    setUserSearchQuery("");
   };
 
   return (
@@ -213,7 +229,7 @@ export default function PerformancePage() {
 
       {/* Filters */}
       <div className="grid sm:grid-cols-[1fr_180px_180px] gap-3 mb-6">
-        {/* Doer selector */}
+        {/* Doer selector with search */}
         <div>
           <label className="block text-[10px] uppercase tracking-[0.14em] text-text-muted mb-1.5 font-semibold">
             Doer
@@ -221,7 +237,7 @@ export default function PerformancePage() {
           <div className="relative">
             <button
               type="button"
-              onClick={() => setDoerOpen((v) => !v)}
+              onClick={handleOpenDropdown}
               disabled={loading}
               className={cn(
                 "w-full h-10 px-3 rounded-md border border-border bg-bg-surface text-left flex items-center gap-3 transition-colors",
@@ -257,20 +273,32 @@ export default function PerformancePage() {
             </button>
 
             {doerOpen && (
-              <div className="absolute z-20 mt-1.5 w-full max-h-72 overflow-y-auto rounded-md border border-border bg-bg-surface shadow-card animate-fade-in">
-                {users.length === 0 ? (
+              <div className="absolute z-20 mt-1.5 w-full max-h-80 overflow-y-auto rounded-md border border-border bg-bg-surface shadow-card animate-fade-in">
+                {/* Search input inside dropdown */}
+                <div className="sticky top-0 p-2 border-b border-border bg-bg-surface">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      placeholder="Search by name..."
+                      className="w-full h-9 pl-8 pr-2 rounded-md text-[13px] border border-border bg-bg-elevated focus:outline-none focus:ring-2 focus:ring-accent/20"
+                    />
+                  </div>
+                </div>
+
+                {filteredUsers.length === 0 ? (
                   <div className="px-4 py-6 text-[13px] text-text-muted text-center">
-                    No doers available.
+                    No matching doers.
                   </div>
                 ) : (
-                  users.map((u) => (
+                  filteredUsers.map((u) => (
                     <button
                       key={u.id}
                       type="button"
-                      onClick={() => {
-                        setDoerId(u.id);
-                        setDoerOpen(false);
-                      }}
+                      onClick={() => handleSelectUser(u.id)}
                       className={cn(
                         "w-full px-3 py-2 flex items-center gap-2.5 text-left hover:bg-bg-elevated transition-colors",
                         doerId === u.id && "bg-bg-elevated",
@@ -364,7 +392,7 @@ export default function PerformancePage() {
                   <th className="text-center px-4 py-2.5">% Not Completed</th>
                   <th className="text-left px-4 py-2.5">Last Week Commitment</th>
                   <th className="text-left px-4 py-2.5">This Week Commitment</th>
-                </tr>
+                </td>
               </thead>
               <tbody>
                 <tr className="border-b border-border-subtle">
